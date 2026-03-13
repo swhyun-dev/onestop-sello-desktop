@@ -1,0 +1,175 @@
+<!-- // app/renderer/index.html -->
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8" />
+    <title>원스톱/셀록홈즈 크롤러</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="app">
+    <header class="topbar">
+        <h1>원스톱/셀록홈즈 크롤러</h1>
+        <div class="controls">
+            <button id="refreshUiBtn" class="ghost">UI 새로고침</button>
+            <button id="clearSavedBtn" class="ghost">저장값 초기화</button>
+        </div>
+    </header>
+
+    <section class="card">
+        <h2>실행 설정</h2>
+
+        <div class="controls">
+            <input id="rangeInput" type="text" placeholder="예: 1~100,400~500,878" value="1~20" />
+            <label class="inline">
+                <input id="headlessInput" type="checkbox" />
+                headless
+            </label>
+        </div>
+
+        <div class="controls" style="margin-top:10px;">
+            <input id="onestopUserIdInput" type="text" placeholder="원스톱 아이디" />
+            <input id="onestopPasswordInput" type="password" placeholder="원스톱 비밀번호" />
+        </div>
+
+        <div style="margin-top:10px;">
+        <textarea
+                id="selloCookieInput"
+                placeholder="셀록홈즈 로그인된 브라우저의 Cookie 전체 문자열을 붙여넣으세요."
+                style="width:100%; min-height:120px; padding:12px; border:1px solid #d0d7de; border-radius:10px; resize:vertical;"
+        ></textarea>
+        </div>
+
+        <div class="meta small" style="margin-top:8px;">
+            입력값은 이 PC의 로컬 저장소(localStorage)에 저장됩니다.
+        </div>
+
+        <div class="controls" style="margin-top:10px;">
+            <button id="startBtn">시작</button>
+            <button id="stopBtn" class="ghost">중지</button>
+        </div>
+    </section>
+
+    <section class="status-grid">
+        <div class="card">
+            <h2>진행 상태</h2>
+            <div id="statusText">대기중</div>
+            <div id="progressText">0 / 0</div>
+            <div id="currentNoText">상품번호: -</div>
+            <div id="searchKeywordText">검색어: -</div>
+        </div>
+
+        <div class="card">
+            <h2>집계</h2>
+            <div id="countText">smartstore 0 / coupang 0 / passed 0 / errors 0</div>
+        </div>
+    </section>
+
+    <section
+            class="card"
+            id="loadingCard"
+            style="display:none; border:1px solid #bfdbfe; background:#eff6ff;"
+    >
+        <h2>조회 중</h2>
+        <div style="display:flex; align-items:center; gap:12px;">
+            <div
+                    id="loadingSpinner"
+                    style="
+            width:22px;
+            height:22px;
+            border:3px solid #cbd5e1;
+            border-top:3px solid #2563eb;
+            border-radius:50%;
+            animation: spin 0.8s linear infinite;
+          "
+            ></div>
+            <div id="loadingText" style="font-weight:700; color:#1d4ed8;">
+                셀록홈즈 검색 결과를 불러오는 중입니다...
+            </div>
+        </div>
+    </section>
+
+    <section class="card" id="noticeCard" style="display:none; border:1px solid #f59e0b; background:#fff7ed;">
+        <h2>안내</h2>
+        <div id="noticeText" style="font-weight:700; color:#9a3412;">-</div>
+    </section>
+
+    <section class="compare-grid">
+        <div class="card panel">
+            <h2>원스톱</h2>
+            <img id="onestopImage" class="preview" alt="" />
+            <div id="onestopTitle" class="title">-</div>
+            <div id="onestopPrice" class="meta">-</div>
+            <div id="onestopUrl" class="meta small">-</div>
+        </div>
+
+        <div class="column">
+            <div class="card panel">
+                <h2>스마트스토어/네이버 후보</h2>
+                <img id="smartImage" class="preview" alt="" />
+                <div id="smartTitle" class="title">-</div>
+                <div id="smartMeta" class="meta">-</div>
+                <div id="smartUrl" class="meta small">-</div>
+                <button id="smartYesBtn" class="primary">스마트스토어 맞음</button>
+                <button id="smartNoBtn" class="ghost">스마트스토어 아님</button>
+            </div>
+
+            <div class="card panel">
+                <h2>쿠팡 후보</h2>
+                <img id="coupangImage" class="preview" alt="" />
+                <div id="coupangTitle" class="title">-</div>
+                <div id="coupangMeta" class="meta">-</div>
+                <div id="coupangUrl" class="meta small">-</div>
+                <button id="coupangYesBtn" class="primary">쿠팡 맞음</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>후보 검색어 수정</h2>
+        <div class="controls">
+            <input id="keywordInput" type="text" placeholder="검색어 수정" />
+            <button id="retryBtn">재검색</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>패스 사유</h2>
+
+        <div style="display:grid; gap:8px;">
+            <label><input type="radio" name="passReason" value="different_image" checked /> 다른 이미지가 나옴</label>
+            <label><input type="radio" name="passReason" value="no_image" /> 아무런 이미지가 안나옴</label>
+            <label><input type="radio" name="passReason" value="discontinued" /> 단종상품 / 더이상 판매 안하는 상품</label>
+            <label><input type="radio" name="passReason" value="other" /> 기타 사유</label>
+        </div>
+
+        <div style="margin-top:10px;">
+            <input
+                    id="passReasonEtcInput"
+                    type="text"
+                    placeholder="기타 사유를 입력하세요"
+                    style="width:100%;"
+            />
+        </div>
+
+        <div class="controls" style="margin-top:10px;">
+            <button id="passBtn" class="danger">패스 저장</button>
+        </div>
+    </section>
+
+    <section class="card">
+        <h2>로그</h2>
+        <pre id="logBox" class="logbox"></pre>
+    </section>
+</div>
+
+<style>
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+</style>
+
+<script src="./renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+{
+  "cookies": [
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/login_process",
+      "expires": 1804785937.065019,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/sns_process",
+      "expires": 1804785934.715117,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/member",
+      "expires": 1804785933.861718,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/stats",
+      "expires": 1804785940.706158,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/goods",
+      "expires": 1804785939.063118,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/link",
+      "expires": 1804785940.037715,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/main",
+      "expires": 1804785937.669606,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "onestopdomecom_firstmall",
+      "value": "1e5g3f1qtcc7u1lfbm05odl0icq0k3jo",
+      "domain": ".onestopdome.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "marketplace",
+      "value": "direct",
+      "domain": "onestopdome.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga",
+      "value": "GA1.1.754256376.1773249935",
+      "domain": ".onestopdome.com",
+      "path": "/",
+      "expires": 1807809939.797642,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_gcl_au",
+      "value": "1.1.202334178.1773249935",
+      "domain": ".onestopdome.com",
+      "path": "/",
+      "expires": 1781025935,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "auto_login",
+      "value": "n",
+      "domain": ".onestopdome.com",
+      "path": "/",
+      "expires": 1804785937.065163,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "IDE",
+      "value": "AHWqTUlA_iukDajyZSMQyTtmtN1ERVZot42zNJlvRMfxDdLeZ62l-sauGcRwXJOk",
+      "domain": ".doubleclick.net",
+      "path": "/",
+      "expires": 1807809938.171779,
+      "httpOnly": true,
+      "secure": true,
+      "sameSite": "None"
+    },
+    {
+      "name": "mobileapp",
+      "value": "N",
+      "domain": "onestopdome.com",
+      "path": "/",
+      "expires": 1804785939.714033,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "_ga_F3E533Z4CR",
+      "value": "GS2.1.s1773249934$o1$g1$t1773249939$j55$l0$h1555196063",
+      "domain": ".onestopdome.com",
+      "path": "/",
+      "expires": 1807809939.815751,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://onestopdome.com",
+      "localStorage": [
+        {
+          "name": "_gcl_ls",
+          "value": "{\"schema\":\"gcl\",\"version\":1,\"gcl_ctr\":{\"value\":{\"value\":0,\"timeouts\":0,\"errors\":0,\"creationTimeMs\":1773249934558},\"expires\":1781025934558}}"
+        }
+      ]
+    }
+  ]
+}

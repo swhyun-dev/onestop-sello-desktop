@@ -1,0 +1,43 @@
+<!-- Start Script for ga4 (쇼핑몰 제품 클릭) -->
+<script type='text/javascript'>
+    // (반응형스킨) 상품 리스트 클릭시
+    $('a[href^="/goods/view"]').click(function(e){
+        try {
+            var items = '';
+            if (items != '' && typeof items != 'undefined' && items != null ){
+                items = JSON.parse(items);
+            }
+            var ori_url= $(this).attr('href');
+            var qs = ori_url.substring(ori_url.indexOf('?')+1).split('&');
+            qs = qs[0].split("=");
+            no = qs[1]; // 상품 번호
+            if (typeof gtag != 'undefined') {
+                ga4_select_item(no);
+            }
+        } catch(e) {
+            console.log('GA4 select_item 이벤트 발생 에러 :',e);
+        }   
+    });
+</script>
+<!-- End Script for ga4 --><!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++
+@@ "상품리스트 페이지" 상품 영역 @@
+- 파일위치 : [스킨폴더]/goods/search_list_template.html
+- 관련 페이지들 : 카테고리, 지역, 브랜드, 검색결과, 신상품, 베스트, 이벤트, 사은품 이벤트, 미니샵
+++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+
+<ul>
+<!-- ++++++++++++++++++++++++++++++++++++++++++++++++++++
+@@ goods_list_style1 @@
+- 파일 위치 : /data/design_list/goods_list_style1.html
+++++++++++++++++++++++++++++++++++++++++++++++++++++ -->
+
+
+</ul>
+
+<div class="paging_navigation">
+	<a href="javascript:goodsSearchPage(1)">1</a>
+	<a href="javascript:goodsSearchPage(2)">2</a>
+<a href="javascript:goodsSearchPage(2)" class="last">마지막 ▶</a>
+</div>
+
+<script>$("a.total span.num").html('317');</script>
