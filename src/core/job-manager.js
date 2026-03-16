@@ -1,9 +1,11 @@
 // src/core/job-manager.js
 const fs = require("node:fs");
 const path = require("node:path");
+const { chromium } = require("playwright");
 const { parseRangeText } = require("./range-parser");
 const { createLogger } = require("../utils/logger");
 const { SelloClient } = require("../crawler/sello-client");
+const { AliExpressClient } = require("../crawler/aliexpress-client");
 const { splitCandidates } = require("../crawler/compare-service");
 const { FileDb } = require("../storage/file-db");
 
@@ -17,6 +19,8 @@ class JobManager {
         this.running = false;
         this.stopRequested = false;
         this.decisionResolver = null;
+        this.browser = null;
+        this.aliClient = null;
         this.onestopProductsPath = path.resolve(dataDir, "onestop_products.json");
     }
 
@@ -28,6 +32,33 @@ class JobManager {
         this.logger.log(message);
         this.stateStore.appendLog(message);
         this.emit();
+    }
+
+    async ensureBrowser(headless) {
+        if (this.browser) return;
+
+        this.browser = await chromium.launch({
+            headless: !!headless
+        });
+
+        this.aliClient = new AliExpressClient({
+            browser: this.browser,
+            dataDir: this.dataDir,
+            logger: (msg) => this.log(msg)
+        });
+    }
+
+    async closeBrowser() {
+        try {
+            if (this.aliClient) await this.aliClient.close();
+        } catch {}
+
+        try {
+            if (this.browser) await this.browser.close();
+        } catch {}
+
+        this.aliClient = null;
+        this.browser = null;
     }
 
     loadOnestopProducts() {
@@ -101,7 +132,7 @@ class JobManager {
         return this.normalizeKeyword(item?.title || "");
     }
 
-    async start({ rangeText, selloCookie }) {
+    async start({ rangeText, headless, selloCookie }) {
         if (this.running) {
             return { ok: false, message: "이미 실행 중입니다." };
         }
@@ -128,7 +159,7 @@ class JobManager {
 
         this.stateStore.resetForRun({
             total: products.length,
-            headless: false,
+            headless: !!headless,
             rangeText
         });
 
@@ -136,7 +167,7 @@ class JobManager {
         this.log(`ℹ️ 원스톱 JSON 사용: ${this.onestopProductsPath}`);
         this.log(`ℹ️ 범위 기준 상품번호 시작: ${products[0].no}`);
 
-        this.run(products, { selloCookie }).catch((error) => {
+        this.run(products, { selloCookie, headless: !!headless }).catch((error) => {
             this.stateStore.setStatus("ERROR");
             this.log(`❌ ${String(error?.message || error)}`);
             this.running = false;
@@ -169,6 +200,9 @@ class JobManager {
         const searchKeyword = String(payload?.searchKeyword || "").trim();
         const passReasonCode = String(payload?.passReasonCode || "").trim();
         const passReasonText = String(payload?.passReasonText || "").trim();
+        const selectedAliCandidates = Array.isArray(payload?.selectedAliCandidates)
+            ? payload.selectedAliCandidates.slice(0, 8)
+            : [];
 
         if (action === "retry" && !searchKeyword) {
             return { ok: false, message: "재검색 키워드가 비어 있습니다." };
@@ -180,7 +214,13 @@ class JobManager {
 
         const resolver = this.decisionResolver;
         this.decisionResolver = null;
-        resolver({ action, searchKeyword, passReasonCode, passReasonText });
+        resolver({
+            action,
+            searchKeyword,
+            passReasonCode,
+            passReasonText,
+            selectedAliCandidates
+        });
 
         return { ok: true };
     }
@@ -195,12 +235,13 @@ class JobManager {
         });
     }
 
-    async waitForKeywordFix(onestopItem, currentKeyword, noticeMessage) {
+    async waitForKeywordFix(onestopItem, currentKeyword, noticeMessage, aliCandidates = []) {
         this.stateStore.setCurrent({
             onestop: onestopItem,
             searchKeyword: currentKeyword,
             smartCandidate: null,
             coupangCandidate: null,
+            aliCandidates,
             noticeMessage
         });
         this.emit();
@@ -210,6 +251,8 @@ class JobManager {
     }
 
     async run(products, credentials) {
+        await this.ensureBrowser(credentials.headless);
+
         const sello = new SelloClient({
             cookie: credentials.selloCookie,
             logger: (msg) => this.log(msg)
@@ -235,6 +278,7 @@ class JobManager {
                 searchKeyword: "",
                 smartCandidate: null,
                 coupangCandidate: null,
+                aliCandidates: [],
                 noticeMessage: ""
             });
             this.emit();
@@ -243,6 +287,7 @@ class JobManager {
                 this.log(`- 원스톱(JSON) 조회: no=${onestopItem.no} / ${onestopItem.title}`);
 
                 let activeKeyword = this.buildSearchKeyword(onestopItem);
+
                 this.stateStore.setCurrent({
                     onestop: onestopItem,
                     searchKeyword: activeKeyword,
@@ -252,6 +297,7 @@ class JobManager {
 
                 let selloResult = null;
                 let candidates = null;
+                let aliCandidates = [];
 
                 while (true) {
                     this.log(`- 셀록 검색: ${activeKeyword}`);
@@ -262,11 +308,33 @@ class JobManager {
                         `ℹ️ 후보 추출 완료 / rawCount=${candidates.rawCount} / smart=${candidates.smartCandidate?.title || "-"} / coupang=${candidates.coupangCandidate?.title || "-"}`
                     );
 
+                    // 알리 이미지 검색
+                    if (onestopItem.thumbnailUrl) {
+                        try {
+                            this.log(`- 알리 이미지 검색: no=${onestopItem.no}`);
+                            const ali = await this.aliClient.searchByImage({
+                                imageUrl: onestopItem.thumbnailUrl,
+                                itemNo: onestopItem.no,
+                                maxItems: 20
+                            });
+                            aliCandidates = Array.isArray(ali?.candidates) ? ali.candidates : [];
+                        } catch (error) {
+                            aliCandidates = [];
+                            this.log(`⚠️ 알리 이미지 검색 실패(${onestopItem.no}): ${String(error?.message || error)}`);
+                        }
+                    } else {
+                        aliCandidates = [];
+                        this.log(`⚠️ 알리 이미지 검색 스킵(${onestopItem.no}): 원스톱 썸네일 없음`);
+                    }
+
+                    this.log(`ℹ️ 알리 후보 수: ${aliCandidates.length}`);
+
                     if (candidates.rawCount === 0) {
                         const decision = await this.waitForKeywordFix(
                             onestopItem,
                             activeKeyword,
-                            "검색 결과가 없습니다. 검색어를 수정한 뒤 재검색하거나 패스하세요."
+                            "검색 결과가 없습니다. 검색어를 수정한 뒤 재검색하거나 패스하세요.",
+                            aliCandidates
                         );
 
                         if (decision.action === "retry") {
@@ -279,6 +347,7 @@ class JobManager {
                                 onestopItem,
                                 { smartKeywords: [], coupangKeywords: [], searchJson: null },
                                 { smartCandidate: null, coupangCandidate: null, rawCount: 0 },
+                                aliCandidates,
                                 decision,
                                 activeKeyword
                             );
@@ -289,10 +358,12 @@ class JobManager {
                             onestopItem,
                             { smartKeywords: [], coupangKeywords: [], searchJson: null },
                             { smartCandidate: null, coupangCandidate: null, rawCount: 0 },
+                            aliCandidates,
                             {
                                 action: "pass",
                                 passReasonCode: "other",
-                                passReasonText: "검색 결과 없음 / 수동 패스"
+                                passReasonText: "검색 결과 없음 / 수동 패스",
+                                selectedAliCandidates: []
                             },
                             activeKeyword
                         );
@@ -304,6 +375,7 @@ class JobManager {
                         searchKeyword: activeKeyword,
                         smartCandidate: candidates.smartCandidate,
                         coupangCandidate: candidates.coupangCandidate,
+                        aliCandidates,
                         noticeMessage: ""
                     });
                     this.emit();
@@ -318,13 +390,14 @@ class JobManager {
                             searchKeyword: activeKeyword,
                             smartCandidate: null,
                             coupangCandidate: null,
+                            aliCandidates: [],
                             noticeMessage: ""
                         });
                         this.emit();
                         continue;
                     }
 
-                    await this.applyDecision(onestopItem, selloResult, candidates, decision, activeKeyword);
+                    await this.applyDecision(onestopItem, selloResult, candidates, aliCandidates, decision, activeKeyword);
                     break;
                 }
 
@@ -332,7 +405,8 @@ class JobManager {
                 this.stateStore.clearPendingDecision();
                 this.stateStore.clearCandidates();
                 this.stateStore.setCurrent({
-                    noticeMessage: ""
+                    noticeMessage: "",
+                    aliCandidates: []
                 });
                 this.stateStore.setStatus("RUNNING");
                 this.emit();
@@ -360,10 +434,11 @@ class JobManager {
         }
 
         this.running = false;
+        await this.closeBrowser();
         this.emit();
     }
 
-    async applyDecision(onestopItem, selloResult, candidates, decision, searchKeyword) {
+    async applyDecision(onestopItem, selloResult, candidates, aliCandidates, decision, searchKeyword) {
         const baseRecord = {
             createdAt: new Date().toISOString(),
             searchKeyword,
@@ -374,6 +449,12 @@ class JobManager {
                 coupangKeywords: selloResult?.coupangKeywords || [],
                 smartCandidate: candidates?.smartCandidate || null,
                 coupangCandidate: candidates?.coupangCandidate || null
+            },
+            aliexpress: {
+                searched: true,
+                queryImage: onestopItem.thumbnailUrl || "",
+                candidates: Array.isArray(aliCandidates) ? aliCandidates : [],
+                selected: Array.isArray(decision?.selectedAliCandidates) ? decision.selectedAliCandidates : []
             }
         };
 
