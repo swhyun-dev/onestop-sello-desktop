@@ -11,6 +11,10 @@ const api = {
     getState: () => safeInvoke("state:get"),
     submitDecision: (payload) => safeInvoke("crawl:decision", payload),
 
+    openAliPrepare: (payload) => safeInvoke("crawl:ali-open-prepare", payload),
+    confirmAliReady: () => safeInvoke("crawl:ali-confirm-ready"),
+    getAliNextPage: (payload) => safeInvoke("crawl:ali-next-page", payload),
+
     onStateChanged: (callback) => {
         const handler = (_event, data) => {
             try {

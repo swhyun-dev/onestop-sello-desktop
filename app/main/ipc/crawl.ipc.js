@@ -34,6 +34,39 @@ function registerCrawlIpc(jobManager) {
             };
         }
     });
+
+    ipcMain.handle("crawl:ali-open-prepare", async (_event, payload) => {
+        try {
+            return await jobManager.openAliPrepare(!!payload?.headless);
+        } catch (error) {
+            return {
+                ok: false,
+                message: String(error?.message || error)
+            };
+        }
+    });
+
+    ipcMain.handle("crawl:ali-confirm-ready", async () => {
+        try {
+            return await jobManager.confirmAliReady();
+        } catch (error) {
+            return {
+                ok: false,
+                message: String(error?.message || error)
+            };
+        }
+    });
+
+    ipcMain.handle("crawl:ali-next-page", async (_event, payload) => {
+        try {
+            return await jobManager.loadNextAliPage(Number(payload?.maxItemsPerPage) || 20);
+        } catch (error) {
+            return {
+                ok: false,
+                message: String(error?.message || error)
+            };
+        }
+    });
 }
 
 module.exports = { registerCrawlIpc };
