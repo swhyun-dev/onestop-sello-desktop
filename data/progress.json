@@ -1,11 +1,11 @@
 {
-  "status": "RUNNING",
+  "status": "WAITING_DECISION",
   "run": {
     "headless": true,
-    "rangeText": "1~100"
+    "rangeText": "1523~1902"
   },
   "progress": {
-    "total": 87,
+    "total": 371,
     "processed": 0
   },
   "counts": {
@@ -17,38 +17,254 @@
   "current": {
     "onestop": {
       "exists": true,
-      "no": 9,
-      "url": "https://onestopdome.com/goods/view?no=9",
-      "finalUrl": "https://onestopdome.com/goods/view?no=9",
-      "title": "제이브로시스 도어 LED 스트립 A0015돌다리",
-      "price": 6730,
-      "priceText": "6730",
-      "thumbnailUrl": "https://onestopdome.com/data/goods/21/02/07/1000000013/1000000013_magnify_065.jpg",
-      "category": "vvip"
+      "no": 1523,
+      "url": "/goods/view?no=1523",
+      "finalUrl": "/goods/view?no=1523",
+      "title": "스틸 비즈 체인 목걸이 악세사리 부자재",
+      "price": 0,
+      "priceText": "0",
+      "thumbnailUrl": "https://onestopdome.com/data/goods/7/2024/12/_temp_17352824736590list1.png",
+      "category": "",
+      "options": [
+        {
+          "optionName": "옵션",
+          "values": [
+            {
+              "name": "혼합",
+              "price": 11340,
+              "diff": 4040
+            },
+            {
+              "name": "실버",
+              "price": 7300,
+              "diff": 0
+            }
+          ]
+        }
+      ]
     },
-    "searchKeyword": "도어 LED 스트립 A0015",
-    "smartCandidate": null,
+    "searchKeyword": "비즈 체인 목걸이 악세사리 부자재",
+    "smartCandidate": {
+      "title": "실버 군번줄 볼체인 에어팟 키링 재료 악세사리 부자재 diy",
+      "image": "https://shopping-phinf.pstatic.net/main_8279521/82795217128.jpg",
+      "link": "https://smartstore.naver.com/main/products/5250694650",
+      "mallName": "무드블로우",
+      "price": 20,
+      "priceText": "20원",
+      "category": "패션잡화 / 주얼리 / 목걸이 / 패션목걸이",
+      "productId": "82795217128",
+      "productType": "2"
+    },
     "coupangCandidate": null,
-    "noticeMessage": "원스톱 상품번호 1~4, 6~8, 11, 58, 61 완료 / 9번부터 다시 시작합니다.",
-    "workflowStage": "SEARCHING",
-    "aliCandidates": [],
-    "aliCandidatePages": [],
-    "aliPage": 1
+    "noticeMessage": "알리 후보를 먼저 일부만 보여줍니다. 더 필요하면 '더보기'로 현재 페이지를 추가 로딩하고, '다음 페이지'로 알리 실제 다음 페이지로 이동합니다.",
+    "workflowStage": "REVIEW",
+    "aliCandidates": [
+      {
+        "id": "ali_1",
+        "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+        "priceText": "₩1,510",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/Saf5362f8d4024d60838b6cfccf81b359y.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005006020391528.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%227523%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218143%211510%21%21%215.34%210.99%21%402101584917757416022302271ec3eb%2112000035353052550%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=XSMtKr8Bvq1m&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006020391528%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_2",
+        "title": "1 상자 스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 크림프 비즈 캡 Diy 팔찌 목걸이 쥬얼리 만들기 키트 만들기 세트",
+        "priceText": "₩1,510",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S9fc4bd4e80df4caba7ddb43f709bd6d9G.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005007345527534.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%221550%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%219470%211510%21%21%2142.45%216.77%21%402101584917757416022302271ec3eb%2112000040355642202%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687441&curPageLogUid=tlO5dTG533pB&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005007345527534%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_3",
+        "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+        "priceText": "₩4,460",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S8ac2116bb49e42beb4922e468ddcf1164.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005006819695860.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%227188%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%2112659%214460%21%21%2156.74%2119.99%21%402101584917757416022302271ec3eb%2112000038408553880%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=8wy4X9d5zrhT&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006819695860%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_4",
+        "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+        "priceText": "₩4,200",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S8ac2116bb49e42beb4922e468ddcf1164.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005007306731152.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%228083%22%2C%22orig_sl_item_id%22%3A%221005007306731152%22%2C%22orig_item_id%22%3A%221005006819695860%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218750%214200%21%21%2139.22%2118.82%21%402101584917757416022302271ec3eb%2112000057280883070%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=qKO0NfTQFzV0&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005007306731152%7C_p_origin_prod%3A1005006819695860"
+      },
+      {
+        "id": "ali_5",
+        "title": "1 상자 스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 크림프 비즈 캡 Diy 팔찌 목걸이 쥬얼리 만들기 키트 만들기 세트",
+        "priceText": "₩3,160",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S9fc4bd4e80df4caba7ddb43f709bd6d9G.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005006996667575.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%221979%22%2C%22orig_sl_item_id%22%3A%221005006996667575%22%2C%22orig_item_id%22%3A%221005007345527534%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%216583%213160%21%21%2129.51%2114.17%21%402101584917757416022302271ec3eb%2112000038989334696%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=ulRsvCRfDDbN&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006996667575%7C_p_origin_prod%3A1005007345527534"
+      },
+      {
+        "id": "ali_6",
+        "title": "보석 만들기 키트 세트 상자 스테인레스 스틸 오픈 점프 반지 랍스터 걸쇠 귀걸이 후크 팔찌 결과 목걸이 용품",
+        "priceText": "₩1,510",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S6c5143b790e1400b9584f4c1d067c966c.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005006116002225.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%228208%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218656%211510%21%21%2138.80%216.77%21%402151e96117757416026421830d044c%2112000035822632909%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=CUGIBe2IzZWm&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006116002225%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_7",
+        "title": "합금 액세서리 쥬얼리 결과 세트 수리 도구 랍스터 걸쇠 오픈 점프 링 DIY 쥬얼리 용품 만들기 귀걸이 후크",
+        "priceText": "₩1,510",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/Sed6c354b7a1347d1b3342be6403706f3p.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005002447847316.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%228776%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%212912%211510%21%21%211.91%210.99%21%402151e96117757416026421830d044c%2112000035211482664%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=pr8jKG8NwO9v&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005002447847316%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_8",
+        "title": "스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 Diy 팔찌 목걸이 용품에 대한 압착 비즈 모자 보석 만들기 키트 세트 상자",
+        "priceText": "₩1,510",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S394f4be7bdec4228ad3bb2845a444991u.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005004697751326.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%221827%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%217823%211510%21%21%215.13%210.99%21%402151e96117757416026421830d044c%2112000030138272012%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=jnykKXZUgko2&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005004697751326%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_9",
+        "title": "1 상자 보석 만들기 키트 스테인레스 스틸 랍스터 걸쇠 점프 링 엔드 크림프 비즈 박스 세트 수제 팔찌 목걸이 결과",
+        "priceText": "₩1,510",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S36332504f2244f0a812dc812a1eb117eq.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005005997281449.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%2234%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218646%211510%21%21%215.67%210.99%21%402151e96117757416026421830d044c%2112000035247850564%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687441&curPageLogUid=aE2qD3tKctpV&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005005997281449%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_10",
+        "title": "한 세트 상자 3 4 5 6 7 8 10mm 8 색 오픈 점프 링 분할 링 링크 루프 DIY 쥬얼리 결과 커넥터 만들기",
+        "priceText": "₩1,510",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S89bd68375e544bf1aad3b0c8ff9cf5d21.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005005605285096.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%225273%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%219849%211510%21%21%2144.15%216.77%21%402151e96117757416026421830d044c%2112000033722873843%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=lYfBlMhhJbtu&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005005605285096%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_11",
+        "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+        "priceText": "₩7,300",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/S8ac2116bb49e42beb4922e468ddcf1164.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005005948062082.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%22336%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%217300%217300%21%21%214.79%214.79%21%402151e96117757416026431831d044c%2112000035186678772%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=d69QRq6vSvin&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005005948062082%7C_p_origin_prod%3A"
+      },
+      {
+        "id": "ali_12",
+        "title": "1 상자 스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 크림프 비즈 캡 Diy 팔찌 목걸이 쥬얼리 만들기 키트 만들기 세트",
+        "priceText": "₩3,260",
+        "image": "https://ae-pic-a1.aliexpress-media.com/kf/Sdbb141ddf102445e902d2d6f3df6aa10z.jpg_480x480q75.jpg",
+        "url": "https://ko.aliexpress.com/item/1005007305988680.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%2267%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%219165%213260%21%21%2141.08%2114.61%21%402151e96117757416026431831d044c%2112000040172806872%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=TDSvTv8K7x0u&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005007305988680%7C_p_origin_prod%3A"
+      }
+    ],
+    "aliCandidatePages": [
+      [
+        {
+          "id": "ali_1",
+          "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+          "priceText": "₩1,510",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/Saf5362f8d4024d60838b6cfccf81b359y.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005006020391528.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%227523%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218143%211510%21%21%215.34%210.99%21%402101584917757416022302271ec3eb%2112000035353052550%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=XSMtKr8Bvq1m&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006020391528%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_2",
+          "title": "1 상자 스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 크림프 비즈 캡 Diy 팔찌 목걸이 쥬얼리 만들기 키트 만들기 세트",
+          "priceText": "₩1,510",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S9fc4bd4e80df4caba7ddb43f709bd6d9G.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005007345527534.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%221550%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%219470%211510%21%21%2142.45%216.77%21%402101584917757416022302271ec3eb%2112000040355642202%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687441&curPageLogUid=tlO5dTG533pB&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005007345527534%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_3",
+          "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+          "priceText": "₩4,460",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S8ac2116bb49e42beb4922e468ddcf1164.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005006819695860.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%227188%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%2112659%214460%21%21%2156.74%2119.99%21%402101584917757416022302271ec3eb%2112000038408553880%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=8wy4X9d5zrhT&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006819695860%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_4",
+          "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+          "priceText": "₩4,200",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S8ac2116bb49e42beb4922e468ddcf1164.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005007306731152.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%228083%22%2C%22orig_sl_item_id%22%3A%221005007306731152%22%2C%22orig_item_id%22%3A%221005006819695860%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218750%214200%21%21%2139.22%2118.82%21%402101584917757416022302271ec3eb%2112000057280883070%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=qKO0NfTQFzV0&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005007306731152%7C_p_origin_prod%3A1005006819695860"
+        },
+        {
+          "id": "ali_5",
+          "title": "1 상자 스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 크림프 비즈 캡 Diy 팔찌 목걸이 쥬얼리 만들기 키트 만들기 세트",
+          "priceText": "₩3,160",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S9fc4bd4e80df4caba7ddb43f709bd6d9G.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005006996667575.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%221979%22%2C%22orig_sl_item_id%22%3A%221005006996667575%22%2C%22orig_item_id%22%3A%221005007345527534%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%216583%213160%21%21%2129.51%2114.17%21%402101584917757416022302271ec3eb%2112000038989334696%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=ulRsvCRfDDbN&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006996667575%7C_p_origin_prod%3A1005007345527534"
+        },
+        {
+          "id": "ali_6",
+          "title": "보석 만들기 키트 세트 상자 스테인레스 스틸 오픈 점프 반지 랍스터 걸쇠 귀걸이 후크 팔찌 결과 목걸이 용품",
+          "priceText": "₩1,510",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S6c5143b790e1400b9584f4c1d067c966c.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005006116002225.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%228208%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218656%211510%21%21%2138.80%216.77%21%402151e96117757416026421830d044c%2112000035822632909%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=CUGIBe2IzZWm&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005006116002225%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_7",
+          "title": "합금 액세서리 쥬얼리 결과 세트 수리 도구 랍스터 걸쇠 오픈 점프 링 DIY 쥬얼리 용품 만들기 귀걸이 후크",
+          "priceText": "₩1,510",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/Sed6c354b7a1347d1b3342be6403706f3p.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005002447847316.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%228776%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%212912%211510%21%21%211.91%210.99%21%402151e96117757416026421830d044c%2112000035211482664%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=pr8jKG8NwO9v&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005002447847316%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_8",
+          "title": "스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 Diy 팔찌 목걸이 용품에 대한 압착 비즈 모자 보석 만들기 키트 세트 상자",
+          "priceText": "₩1,510",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S394f4be7bdec4228ad3bb2845a444991u.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005004697751326.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%221827%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%217823%211510%21%21%215.13%210.99%21%402151e96117757416026421830d044c%2112000030138272012%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=jnykKXZUgko2&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005004697751326%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_9",
+          "title": "1 상자 보석 만들기 키트 스테인레스 스틸 랍스터 걸쇠 점프 링 엔드 크림프 비즈 박스 세트 수제 팔찌 목걸이 결과",
+          "priceText": "₩1,510",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S36332504f2244f0a812dc812a1eb117eq.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005005997281449.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%2234%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%218646%211510%21%21%215.67%210.99%21%402151e96117757416026421830d044c%2112000035247850564%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687441&curPageLogUid=aE2qD3tKctpV&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005005997281449%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_10",
+          "title": "한 세트 상자 3 4 5 6 7 8 10mm 8 색 오픈 점프 링 분할 링 링크 루프 DIY 쥬얼리 결과 커넥터 만들기",
+          "priceText": "₩1,510",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S89bd68375e544bf1aad3b0c8ff9cf5d21.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005005605285096.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%225273%22%2C%22spu_best_type%22%3A%22price%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%219849%211510%21%21%2144.15%216.77%21%402151e96117757416026421830d044c%2112000033722873843%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895%3BpisId%3A5000000203687443&curPageLogUid=lYfBlMhhJbtu&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005005605285096%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_11",
+          "title": "210-400 개/상자 보석 만들기 키트 랍스터 걸쇠 오픈 점프 링 엔드 크림프 비즈 상자 수제 DIY 팔찌 목걸이 결과",
+          "priceText": "₩7,300",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/S8ac2116bb49e42beb4922e468ddcf1164.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005005948062082.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%22336%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%217300%217300%21%21%214.79%214.79%21%402151e96117757416026431831d044c%2112000035186678772%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=d69QRq6vSvin&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005005948062082%7C_p_origin_prod%3A"
+        },
+        {
+          "id": "ali_12",
+          "title": "1 상자 스테인레스 스틸 랍스터 걸쇠 오픈 점프 링 크림프 비즈 캡 Diy 팔찌 목걸이 쥬얼리 만들기 키트 만들기 세트",
+          "priceText": "₩3,260",
+          "image": "https://ae-pic-a1.aliexpress-media.com/kf/Sdbb141ddf102445e902d2d6f3df6aa10z.jpg_480x480q75.jpg",
+          "url": "https://ko.aliexpress.com/item/1005007305988680.html?algo_pvid=fe4146b0-fa12-4b62-884e-288b2761ad27&algo_exp_id=fe4146b0-fa12-4b62-884e-288b2761ad27&pdp_ext_f=%7B%22order%22%3A%2267%22%2C%22fromPage%22%3A%22search%22%7D&pdp_npi=6%40dis%21KRW%219165%213260%21%21%2141.08%2114.61%21%402151e96117757416026431831d044c%2112000040172806872%21sea%21KR%210%21ABX%211%210%21n_tag%3A-29910%3Bd%3A4692bc3a%3Bm03_new_user%3A-29895&curPageLogUid=TDSvTv8K7x0u&utparam-url=scene%3Aimage_search%7Cquery_from%3Apc_web_image_search%7Cx_object_id%3A1005007305988680%7C_p_origin_prod%3A"
+        }
+      ]
+    ],
+    "aliPage": 1,
+    "aliHasMore": true,
+    "isAliLoading": false,
+    "aliLoadingText": "",
+    "isReviewLoading": false,
+    "reviewLoadingText": ""
   },
-  "pendingDecision": null,
+  "pendingDecision": {
+    "searchKeyword": "비즈 체인 목걸이 악세사리 부자재"
+  },
   "logs": [
-    "🚀 작업 시작 / 총 87건",
+    "🚀 작업 시작 / 총 371건",
     "ℹ️ 원스톱 JSON 사용: C:\\Users\\User\\IdeaProjects\\onestop-sello-desktop\\data\\onestop_products.json",
-    "ℹ️ 이번 실행 결과 저장 위치: C:\\Users\\User\\IdeaProjects\\onestop-sello-desktop\\data\\runs\\20260404_000443",
+    "ℹ️ 이번 실행 결과 저장 위치: C:\\Users\\User\\IdeaProjects\\onestop-sello-desktop\\data\\runs\\20260409_223317",
     "ℹ️ 이번 실행용 최신 결과 파일: C:\\Users\\User\\IdeaProjects\\onestop-sello-desktop\\data\\result_pass.json / result_smartstore.json / result_coupang.json / result_error.json",
     "ℹ️ resume 저장 위치: C:\\Users\\User\\IdeaProjects\\onestop-sello-desktop\\data\\crawl-progress.json",
-    "ℹ️ 범위 기준 상품번호 시작: 9",
-    "♻️ 원스톱 상품번호 1~4, 6~8, 11, 58, 61 완료 / 9번부터 다시 시작합니다.",
-    "- 원스톱(JSON) 조회: no=9 / 제이브로시스 도어 LED 스트립 A0015돌다리",
-    "- 알리 이미지 검색: no=9",
-    "ℹ️ 알리 이미지 검색 시작: no=9 / token=1",
-    "ℹ️ 알리 파일 업로드 완료(준비된 페이지): C:\\Users\\User\\IdeaProjects\\onestop-sello-desktop\\data\\_tmp_aliexpress\\ali_9.jpg",
-    "ℹ️ 알리 결과 대기 완료: 4550ms",
-    "ℹ️ 알리 현재 URL: https://ko.aliexpress.com/w/wholesale-.html?isNewImageSearch=y&filename=OSS%2Fae-image-search-sg2%2F2026-04-03%2F53febe9f-02fe-4002-b659-06c42c967639.jpg&imageId=1775231262736"
+    "ℹ️ 범위 기준 상품번호 시작: 1523",
+    "- 원스톱(JSON) 조회: no=1523 / 스틸 비즈 체인 목걸이 악세사리 부자재",
+    "- 알리 이미지 검색: no=1523",
+    "ℹ️ 알리 이미지 검색 시작: no=1523 / token=1",
+    "ℹ️ 알리 파일 업로드 완료(준비된 페이지): C:\\Users\\User\\IdeaProjects\\onestop-sello-desktop\\data\\_tmp_aliexpress\\ali_1523.jpg",
+    "ℹ️ 알리 결과 대기 완료: 4005ms",
+    "ℹ️ 알리 현재 URL: https://ko.aliexpress.com/w/wholesale-.html?isNewImageSearch=y&filename=OSS%2Fae-image-search-sg2%2F2026-04-09%2F4c643635-3fa7-45f8-8cf1-a0531bfbad11.jpg&imageId=1775741601347",
+    "✅ 알리 후보 1차 수집 완료: page=1 / count=12 / no=1523",
+    "ℹ️ 알리 후보 총 수: 12",
+    "- 셀록 검색: 비즈 체인 목걸이 악세사리 부자재",
+    "ℹ️ 셀록 searchAll 시작: 비즈 체인 목걸이 악세사리 부자재",
+    "ℹ️ 셀록 요청 시작: search(비즈 체인 목걸이 악세사리 부자재)",
+    "ℹ️ 셀록 요청 시작: coupang(비즈 체인 목걸이 악세사리 부자재)",
+    "✅ 셀록 요청 성공: coupang(비즈 체인 목걸이 악세사리 부자재)",
+    "✅ 셀록 요청 성공: search(비즈 체인 목걸이 악세사리 부자재)",
+    "✅ 셀록 searchAll 완료: 비즈 체인 목걸이 악세사리 부자재",
+    "ℹ️ 후보 추출 완료 / rawCount=40 / smart=실버 군번줄 볼체인 에어팟 키링 재료 악세사리 부자재 diy / coupang=-",
+    "⏸ 알리/스마트스토어/쿠팡 통합 검토 대기중"
   ]
 }

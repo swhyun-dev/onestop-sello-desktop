@@ -21,12 +21,19 @@ const els = {
     aliClearSelectionBtn: document.getElementById("aliClearSelectionBtn"),
     aliPrevPageBtn: document.getElementById("aliPrevPageBtn"),
     aliNextPageBtn: document.getElementById("aliNextPageBtn"),
+    aliLoadMoreBtn: document.getElementById("aliLoadMoreBtn"),
     aliPageInfo: document.getElementById("aliPageInfo"),
+    manualAliSearchBtn: document.getElementById("manualAliSearchBtn"),
 
     aliCandidatesContainer: document.getElementById("aliCandidatesContainer"),
     aliSelectionInfo: document.getElementById("aliSelectionInfo"),
     aliSelectedStrip: document.getElementById("aliSelectedStrip"),
     aliEmptyState: document.getElementById("aliEmptyState"),
+
+    aliSelectionDock: document.getElementById("aliSelectionDock"),
+    aliSelectionDockInfo: document.getElementById("aliSelectionDockInfo"),
+    aliSelectionDockList: document.getElementById("aliSelectionDockList"),
+    aliDockClearBtn: document.getElementById("aliDockClearBtn"),
 
     startBtn: document.getElementById("startBtn"),
     stopBtn: document.getElementById("stopBtn"),
@@ -37,6 +44,8 @@ const els = {
     passBtn: document.getElementById("passBtn"),
     refreshUiBtn: document.getElementById("refreshUiBtn"),
     clearSavedBtn: document.getElementById("clearSavedBtn"),
+    editCurrentBtn: document.getElementById("editCurrentBtn"),
+    editByNoBtn: document.getElementById("editByNoBtn"),
     keywordInput: document.getElementById("keywordInput"),
     passReasonEtcInput: document.getElementById("passReasonEtcInput"),
 
@@ -47,8 +56,10 @@ const els = {
     searchKeywordText: document.getElementById("searchKeywordText"),
     countText: document.getElementById("countText"),
 
-    loadingCard: document.getElementById("loadingCard"),
-    loadingText: document.getElementById("loadingText"),
+    aliLoadingCard: document.getElementById("aliLoadingCard"),
+    aliLoadingText: document.getElementById("aliLoadingText"),
+    reviewLoadingCard: document.getElementById("reviewLoadingCard"),
+    reviewLoadingText: document.getElementById("reviewLoadingText"),
 
     noticeCard: document.getElementById("noticeCard"),
     noticeText: document.getElementById("noticeText"),
@@ -57,6 +68,7 @@ const els = {
     onestopTitle: document.getElementById("onestopTitle"),
     onestopPrice: document.getElementById("onestopPrice"),
     onestopUrl: document.getElementById("onestopUrl"),
+    onestopOptions: document.getElementById("onestopOptions"),
 
     smartImage: document.getElementById("smartImage"),
     smartTitle: document.getElementById("smartTitle"),
@@ -89,6 +101,130 @@ function escapeHtml(value) {
         .replace(/'/g, "&#039;");
 }
 
+function renderOnestopOptions(options) {
+    if (!els.onestopOptions) return;
+
+    const groups = Array.isArray(options) ? options : [];
+    if (!groups.length) {
+        els.onestopOptions.innerHTML = `<div class="meta small">옵션 없음</div>`;
+        return;
+    }
+
+    els.onestopOptions.innerHTML = groups.map((group) => {
+        const optionName = escapeHtml(group?.optionName || "옵션");
+        const values = Array.isArray(group?.values) ? group.values : [];
+
+        const chips = values.length
+            ? values.map((value) => {
+                const name = escapeHtml(value?.name || "");
+                const diff = Number(value?.diff || 0);
+                const diffText = diff > 0 ? ` (+${diff})` : diff < 0 ? ` (${diff})` : "";
+                return `
+                    <div style="padding:2px 6px;border:1px solid #d1d5db;border-radius:999px;font-size:12px;background:#fff;">
+                        ${name}${escapeHtml(diffText)}
+                    </div>
+                `;
+            }).join("")
+            : `<div class="meta small">값 없음</div>`;
+
+        return `
+            <div style="margin-top:8px;">
+                <div style="font-weight:700;margin-bottom:6px;">${optionName}</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                    ${chips}
+                </div>
+            </div>
+        `;
+    }).join("");
+}
+
+async function startEditFlow(onestopNo) {
+    if (!hasApi()) {
+        alert("preload 연결 실패");
+        return;
+    }
+
+    if (!window.crawlerApi.startEditItem) {
+        alert("startEditItem API가 없습니다. preload / ipc 반영 후 앱을 완전히 재실행해주세요.");
+        return;
+    }
+
+    const settings = getFormSettings();
+    if (!settings.selloCookie) {
+        alert("셀록홈즈 Cookie 전체 문자열을 입력해주세요.");
+        return;
+    }
+
+    const ok = window.confirm(
+        `${onestopNo}번 상품을 다시 선택하시겠습니까?\n기존 저장 결과는 같은 상품번호 기준으로 교체됩니다.`
+    );
+    if (!ok) return;
+
+    try {
+        const res = await window.crawlerApi.startEditItem({
+            onestopNo,
+            headless: settings.headless,
+            selloCookie: settings.selloCookie
+        });
+
+        if (!res?.ok) {
+            alert(res?.message || "재선택 시작 실패");
+            return;
+        }
+
+        alert(`${onestopNo}번 재선택 모드를 시작했습니다.`);
+        await refreshState();
+    } catch (error) {
+        alert(`재선택 시작 실패: ${String(error?.message || error)}`);
+    }
+}
+
+async function startManualAliSearchFlow() {
+    if (!hasApi()) {
+        alert("preload 연결 실패");
+        return;
+    }
+
+    if (!window.crawlerApi.pickImageAndSearchAli) {
+        alert("pickImageAndSearchAli API가 없습니다. preload / ipc 반영 후 앱을 완전히 재실행해주세요.");
+        return;
+    }
+
+    const state = await window.crawlerApi.getState();
+    const currentNo = Number(state?.current?.onestop?.no);
+    const stage = String(state?.current?.workflowStage || "");
+
+    if (!Number.isFinite(currentNo) || currentNo <= 0) {
+        alert("현재 상품번호가 없습니다.");
+        return;
+    }
+
+    if (!["REVIEW", "KEYWORD_FIX", "SEARCHING"].includes(stage)) {
+        alert("현재 단계에서는 알리 수동 재검색을 사용할 수 없습니다.");
+        return;
+    }
+
+    aliState.selectedMap.clear();
+
+    try {
+        const res = await window.crawlerApi.pickImageAndSearchAli({
+            onestopNo: currentNo,
+            maxItemsPerPage: 36
+        });
+
+        if (!res?.ok) {
+            alert(res?.message || "알리 수동 재검색 실패");
+            await refreshState();
+            return;
+        }
+
+        alert(`직접 업로드 이미지로 알리 재검색 완료 / ${res.count || 0}건`);
+        await refreshState();
+    } catch (error) {
+        alert(`알리 수동 재검색 실패: ${String(error?.message || error)}`);
+    }
+}
+
 function renderNotice(message) {
     if (message) {
         els.noticeCard.style.display = "block";
@@ -110,33 +246,23 @@ function getWorkflowLabel(stage) {
 }
 
 function renderLoading(state) {
-    const status = String(state?.status || "");
     const current = state?.current || {};
-    const logs = Array.isArray(state?.logs) ? state.logs : [];
-    const lastLog = logs.length ? logs[logs.length - 1] : "";
-    const stage = String(current?.workflowStage || "");
+    const aliLoading = !!current?.isAliLoading;
+    const reviewLoading = !!current?.isReviewLoading;
 
-    const isWaitingDecision = status === "WAITING_DECISION";
-    const isSearchingByLog =
-        lastLog.includes("셀록 searchAll 시작") ||
-        lastLog.includes("셀록 요청 시작") ||
-        lastLog.includes("셀록 검색:") ||
-        lastLog.includes("알리 이미지 검색:");
-
-    if (isWaitingDecision && stage !== "SEARCHING") {
-        els.loadingCard.style.display = "none";
-        return;
+    if (els.aliLoadingCard) {
+        els.aliLoadingCard.style.display = aliLoading ? "block" : "none";
+    }
+    if (els.aliLoadingText) {
+        els.aliLoadingText.textContent = current?.aliLoadingText || "알리 이미지를 불러오는 중입니다...";
     }
 
-    if (stage === "SEARCHING" || isSearchingByLog) {
-        els.loadingCard.style.display = "block";
-        els.loadingText.textContent = current?.searchKeyword
-            ? `셀록홈즈/알리 검색 결과를 불러오는 중입니다... (${current.searchKeyword})`
-            : "셀록홈즈/알리 검색 결과를 불러오는 중입니다...";
-        return;
+    if (els.reviewLoadingCard) {
+        els.reviewLoadingCard.style.display = reviewLoading ? "block" : "none";
     }
-
-    els.loadingCard.style.display = "none";
+    if (els.reviewLoadingText) {
+        els.reviewLoadingText.textContent = current?.reviewLoadingText || "셀록홈즈 후보를 불러오는 중입니다...";
+    }
 }
 
 function getFormSettings() {
@@ -240,36 +366,114 @@ function flattenAliPages(aliPages) {
     return out;
 }
 
+function getSelectedAliEntries() {
+    return Array.from(aliState.selectedMap.entries())
+        .slice(0, 10)
+        .map(([key, item], idx) => ({
+            key,
+            item,
+            order: idx + 1
+        }));
+}
+
 function getSelectedAliCandidates() {
-    return Array.from(aliState.selectedMap.values()).slice(0, 10);
+    return getSelectedAliEntries().map(({ item }) => item);
+}
+
+function removeAliSelectionByKey(key) {
+    aliState.selectedMap.delete(key);
 }
 
 function updateAliSelectionInfo(totalPages) {
-    els.aliSelectionInfo.textContent = `선택 ${aliState.selectedMap.size} / 10`;
+    const countText = `선택 ${aliState.selectedMap.size} / 10`;
+    els.aliSelectionInfo.textContent = countText;
     els.aliPageInfo.textContent = `${aliState.currentPage} / ${Math.max(totalPages, 1)}`;
+
+    if (els.aliSelectionDockInfo) {
+        els.aliSelectionDockInfo.textContent = countText;
+    }
 }
 
-function renderSelectedStrip() {
-    const selected = getSelectedAliCandidates();
+function buildSelectedImageCard(entry, extraClass = "") {
+    const image = escapeHtml(entry?.item?.image || "");
+    const order = Number(entry?.order || 0);
+    const key = escapeHtml(entry?.key || "");
 
-    if (!selected.length) {
+    return `
+        <div class="selected-image-card ${extraClass}" data-selected-key="${key}" title="선택 ${order}">
+            <button type="button" class="selected-image-remove" data-remove-selected-key="${key}" aria-label="선택 제거">×</button>
+            <img src="${image}" alt="" />
+            <div class="selected-image-order">${order}</div>
+            <div class="selected-image-card-hint">선택 ${order}</div>
+        </div>
+    `;
+}
+
+function bindSelectedStripEvents(aliPages, workflowStage, itemNo) {
+    const removeButtons = document.querySelectorAll("[data-remove-selected-key]");
+    removeButtons.forEach((btn) => {
+        btn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const key = btn.getAttribute("data-remove-selected-key");
+            if (!key) return;
+
+            removeAliSelectionByKey(key);
+            renderAliCandidates(aliPages, workflowStage, itemNo);
+        });
+    });
+
+    const cards = document.querySelectorAll("[data-selected-key]");
+    cards.forEach((card) => {
+        card.addEventListener("click", () => {
+            const key = card.getAttribute("data-selected-key");
+            if (!key) return;
+
+            const parts = key.split(":");
+            const page = Number(parts[0]);
+            if (Number.isFinite(page) && page > 0) {
+                aliState.currentPage = page;
+                renderAliCandidates(aliPages, workflowStage, itemNo);
+
+                const selectedCardInGrid = els.aliCandidatesContainer.querySelector(".ali-item.is-selected");
+                if (selectedCardInGrid && typeof selectedCardInGrid.scrollIntoView === "function") {
+                    selectedCardInGrid.scrollIntoView({ behavior: "smooth", block: "center" });
+                }
+            }
+        });
+    });
+}
+
+function renderSelectedStrip(aliPages = [], workflowStage = "SEARCHING", itemNo = null) {
+    const selectedEntries = getSelectedAliEntries();
+
+    if (!selectedEntries.length) {
         els.aliSelectedStrip.style.display = "none";
         els.aliSelectedStrip.innerHTML = "";
+
+        if (els.aliSelectionDock) {
+            els.aliSelectionDock.style.display = "none";
+        }
+        if (els.aliSelectionDockList) {
+            els.aliSelectionDockList.innerHTML = "";
+        }
         return;
     }
 
     els.aliSelectedStrip.style.display = "grid";
-    els.aliSelectedStrip.innerHTML = selected
-        .map((item, idx) => {
-            const image = escapeHtml(item?.image || "");
-            return `
-                <div class="selected-image-card" title="선택 ${idx + 1}">
-                    <img src="${image}" alt="" />
-                    <div class="selected-image-order">${idx + 1}</div>
-                </div>
-            `;
-        })
+    els.aliSelectedStrip.innerHTML = selectedEntries
+        .map((entry) => buildSelectedImageCard(entry))
         .join("");
+
+    if (els.aliSelectionDock && els.aliSelectionDockList) {
+        els.aliSelectionDock.style.display = "block";
+        els.aliSelectionDockList.innerHTML = selectedEntries
+            .map((entry) => buildSelectedImageCard(entry, "is-dock"))
+            .join("");
+    }
+
+    bindSelectedStripEvents(aliPages, workflowStage, itemNo);
 }
 
 function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo = null) {
@@ -290,9 +494,14 @@ function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo 
         els.aliEmptyState.style.display = "block";
         els.aliCandidatesContainer.style.display = "none";
         updateAliSelectionInfo(totalPages);
-        renderSelectedStrip();
+        renderSelectedStrip(aliPages, workflowStage, itemNo);
+        const isAliLoading = !!window.__lastCrawlerState?.current?.isAliLoading;
         els.aliPrevPageBtn.disabled = true;
-        els.aliNextPageBtn.disabled = false;
+        els.aliNextPageBtn.disabled = isAliLoading;
+        if (els.aliLoadMoreBtn) {
+            els.aliLoadMoreBtn.disabled = true;
+            els.aliLoadMoreBtn.textContent = "더 없음";
+        }
         return;
     }
 
@@ -335,14 +544,25 @@ function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo 
         els.aliCandidatesContainer.appendChild(card);
     });
 
-    els.aliPrevPageBtn.disabled = aliState.currentPage <= 1;
-    els.aliNextPageBtn.disabled = false;
+    const isAliLoading = !!window.__lastCrawlerState?.current?.isAliLoading;
+    const current = window.__lastCrawlerState?.current || {};
+    const canLoadMore = current?.aliHasMore !== false;
+
+    els.aliPrevPageBtn.disabled = isAliLoading || aliState.currentPage <= 1;
+    els.aliNextPageBtn.disabled = isAliLoading;
+    if (els.aliLoadMoreBtn) {
+        els.aliLoadMoreBtn.disabled = isAliLoading || !canLoadMore;
+        els.aliLoadMoreBtn.textContent = isAliLoading
+            ? "불러오는 중..."
+            : (canLoadMore ? "더보기" : "더 없음");
+    }
 
     updateAliSelectionInfo(totalPages);
-    renderSelectedStrip();
+    renderSelectedStrip(aliPages, workflowStage, itemNo);
 }
 
 function renderState(state) {
+    window.__lastCrawlerState = state;
     const current = state.current || {};
     const counts = state.counts || {};
     const decision = state.pendingDecision || {};
@@ -363,6 +583,7 @@ function renderState(state) {
     els.onestopTitle.textContent = current.onestop?.title || "-";
     els.onestopPrice.textContent = current.onestop?.priceText || String(current.onestop?.price || "-");
     els.onestopUrl.textContent = current.onestop?.url || "-";
+    renderOnestopOptions(current.onestop?.options || []);
 
     setImg(els.smartImage, current.smartCandidate?.image || "");
     els.smartTitle.textContent = current.smartCandidate?.title || "-";
@@ -451,7 +672,7 @@ els.aliNextPageBtn.addEventListener("click", async () => {
     }
 
     try {
-        const res = await window.crawlerApi.getAliNextPage({ maxItemsPerPage: 300 });
+        const res = await window.crawlerApi.getAliNextPage({ maxItemsPerPage: 36 });
 
         if (!res?.ok) {
             alert(res?.message || "다음 페이지가 없습니다.");
@@ -465,10 +686,46 @@ els.aliNextPageBtn.addEventListener("click", async () => {
     }
 });
 
+els.aliLoadMoreBtn.addEventListener("click", async () => {
+    if (!hasApi()) {
+        alert("preload 연결 실패");
+        return;
+    }
+
+    try {
+        const res = await window.crawlerApi.loadAliMore({ maxItemsPerBatch: 36 });
+
+        if (!res?.ok) {
+            alert(res?.message || "더보기 실패");
+            return;
+        }
+
+        await refreshState();
+    } catch (error) {
+        alert(`더보기 실패: ${String(error?.message || error)}`);
+    }
+});
+
 els.aliClearSelectionBtn.addEventListener("click", async () => {
     const current = await getCurrentReviewState();
     aliState.selectedMap.clear();
     renderAliCandidates(current.aliCandidatePages || [], current.workflowStage || "SEARCHING", current.onestop?.no || null);
+});
+
+if (els.aliDockClearBtn) {
+    els.aliDockClearBtn.addEventListener("click", async () => {
+        const current = await getCurrentReviewState();
+        aliState.selectedMap.clear();
+        renderAliCandidates(
+            current.aliCandidatePages || [],
+            current.workflowStage || "SEARCHING",
+            current.onestop?.no || null
+        );
+    });
+}
+
+els.manualAliSearchBtn.addEventListener("click", async () => {
+    await startManualAliSearchFlow();
 });
 
 els.aliOpenPrepareBtn.addEventListener("click", async () => {
@@ -562,6 +819,29 @@ els.stopBtn.addEventListener("click", async () => {
     } catch (error) {
         alert(`중지 실패: ${String(error?.message || error)}`);
     }
+});
+
+els.editCurrentBtn.addEventListener("click", async () => {
+    const state = await window.crawlerApi.getState();
+    const currentNo = Number(state?.current?.onestop?.no);
+    if (!Number.isFinite(currentNo) || currentNo <= 0) {
+        alert("현재 상품번호가 없습니다.");
+        return;
+    }
+    await startEditFlow(currentNo);
+});
+
+els.editByNoBtn.addEventListener("click", async () => {
+    const raw = window.prompt("다시 선택할 상품번호를 입력하세요.", "");
+    if (!raw) return;
+
+    const onestopNo = Number(raw);
+    if (!Number.isFinite(onestopNo) || onestopNo <= 0) {
+        alert("올바른 상품번호를 입력해주세요.");
+        return;
+    }
+
+    await startEditFlow(onestopNo);
 });
 
 els.smartYesBtn.addEventListener("click", async () => {

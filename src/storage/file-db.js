@@ -113,12 +113,6 @@ class FileDb {
         return this.makeRunPaths(runKey);
     }
 
-    append(filePath, item) {
-        const items = this.readArray(filePath);
-        items.push(item);
-        this.writeArray(filePath, items);
-    }
-
     removeByOnestopNo(filePath, onestopNo) {
         const targetNo = Number(onestopNo);
         const items = this.readArray(filePath);
@@ -174,6 +168,7 @@ class FileDb {
 
     removeDecisionByOnestopNo(onestopNo) {
         const latest = this.latestPaths;
+
         this.removeByOnestopNo(latest.smartstore, onestopNo);
         this.removeByOnestopNo(latest.coupang, onestopNo);
         this.removeByOnestopNo(latest.pass, onestopNo);

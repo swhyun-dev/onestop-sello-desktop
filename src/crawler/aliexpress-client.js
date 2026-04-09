@@ -21,12 +21,66 @@ class AliExpressClient {
         };
         this._sharp = null;
         this.searchSeq = 0;
+        this.currentScrollRound = 0;
+        this.maxScrollRoundsPerPage = 8;
     }
 
     ensureDir(dir) {
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
+    }
+
+    resetIncrementalState() {
+        this.currentScrollRound = 0;
+    }
+
+    isValidProductImage(url, meta = {}) {
+        if (!url) return false;
+
+        const s = String(url || "").toLowerCase();
+
+        if (
+            s.startsWith("data:image/") ||
+            s.includes("icon") ||
+            s.includes("logo") ||
+            s.includes("badge") ||
+            s.includes("sprite") ||
+            s.includes("star") ||
+            s.includes("rating") ||
+            s.includes("rank") ||
+            s.includes("seller") ||
+            s.includes("coin") ||
+            s.includes("topseller") ||
+            s.includes("/48x48.") ||
+            s.includes("/60x60.") ||
+            s.includes("/45x60.") ||
+            s.includes("/30x30.") ||
+            s.includes("/24x24.") ||
+            s.includes("/16x16.") ||
+            s.includes("/12x12.") ||
+            s.includes("/154x64.") ||
+            s.includes("/64x64.") ||
+            s.includes("ae01.alicdn.com/kf/htb")
+        ) {
+            return false;
+        }
+
+        const width = Number(meta.width || 0);
+        const height = Number(meta.height || 0);
+        if ((width && width < 120) || (height && height < 120)) {
+            return false;
+        }
+
+        if (
+            s.includes("ae-pic-a1.aliexpress-media.com/kf/") ||
+            s.includes("aliexpress-media.com/kf/") ||
+            s.includes("ae01.alicdn.com/kf/")
+        ) {
+            return true;
+        }
+
+        return false;
     }
 
     async init() {
@@ -57,6 +111,7 @@ class AliExpressClient {
         this.context = null;
         this.page = null;
         this.currentResultPage = 1;
+        this.resetIncrementalState();
     }
 
     log(message) {
@@ -79,14 +134,42 @@ class AliExpressClient {
         return s;
     }
 
-    normalizeAliImage(url) {
+    stripAliAvifSuffix(url) {
         const s = String(url || "").trim();
         if (!s) return "";
+
+        return s
+            .replace(/\.jpg_\.avif(\?.*)?$/i, ".jpg$1")
+            .replace(/\.jpeg_\.avif(\?.*)?$/i, ".jpeg$1")
+            .replace(/\.png_\.avif(\?.*)?$/i, ".png$1")
+            .replace(/\.webp_\.avif(\?.*)?$/i, ".webp$1")
+            .replace(/_\.avif(\?.*)?$/i, "$1");
+    }
+
+    normalizeAliImage(url) {
+        let s = String(url || "").trim();
+        if (!s) return "";
         if (s.startsWith("data:image/")) return "";
-        if (s.startsWith("http://") || s.startsWith("https://")) return s;
-        if (s.startsWith("//")) return `https:${s}`;
-        if (s.startsWith("/")) return `https://ko.aliexpress.com${s}`;
-        return s;
+        if (s.startsWith("http://") || s.startsWith("https://")) return this.stripAliAvifSuffix(s);
+        if (s.startsWith("//")) return this.stripAliAvifSuffix(`https:${s}`);
+        if (s.startsWith("/")) return this.stripAliAvifSuffix(`https://ko.aliexpress.com${s}`);
+        return this.stripAliAvifSuffix(s);
+    }
+
+    firstSrcFromSrcset(value) {
+        const s = String(value || "").trim();
+        if (!s) return "";
+        return s.split(",")[0]?.trim().split(/\s+/)[0] || "";
+    }
+
+    pickFirstImageUrl(...candidates) {
+        for (const candidate of candidates) {
+            const src = this.normalizeAliImage(candidate);
+            if (!src) continue;
+            if (!this.isValidProductImage(src)) continue;
+            return src;
+        }
+        return "";
     }
 
     parsePrice(text) {
@@ -123,6 +206,10 @@ class AliExpressClient {
                 image: this.normalizeAliImage(item.image),
                 url
             };
+
+            if (!normalized.image || !this.isValidProductImage(normalized.image, item)) {
+                continue;
+            }
 
             const prev = map.get(url);
             if (!prev || this.scoreCandidate(normalized) > this.scoreCandidate(prev)) {
@@ -182,19 +269,14 @@ class AliExpressClient {
         }
     }
 
-    shouldConvertToJpeg(imageUrl, contentType = "") {
-        const url = String(imageUrl || "").toLowerCase();
-        const type = String(contentType || "").toLowerCase();
-
-        return url.includes(".avif") || type.includes("image/avif");
-    }
-
     async downloadImage(imageUrl, filePath) {
         if (!imageUrl) {
             throw new Error("알리 검색용 이미지 URL이 없습니다.");
         }
 
-        const response = await fetch(imageUrl, {
+        const normalizedUrl = this.normalizeAliImage(imageUrl);
+
+        const response = await fetch(normalizedUrl, {
             headers: {
                 "User-Agent": this.defaultHeaders["User-Agent"]
             }
@@ -208,14 +290,33 @@ class AliExpressClient {
         let buffer = Buffer.from(arrayBuffer);
         const contentType = response.headers.get("content-type") || "";
 
-        if (this.shouldConvertToJpeg(imageUrl, contentType)) {
+        if (String(contentType).toLowerCase().includes("image/avif")) {
             const sharp = await this.ensureSharp();
             buffer = await sharp(buffer).jpeg({ quality: 92 }).toBuffer();
-            this.log(`ℹ️ 알리 검색 이미지 변환 완료: AVIF → JPG / ${imageUrl}`);
+            this.log(`ℹ️ 알리 검색 이미지 변환 완료: AVIF → JPG / ${normalizedUrl}`);
         }
 
         fs.writeFileSync(filePath, buffer);
         return filePath;
+    }
+
+    async prepareLocalImageFile(filePath, itemNo) {
+        if (!filePath || !fs.existsSync(filePath)) {
+            throw new Error(`검색 이미지 파일이 없습니다: ${filePath}`);
+        }
+
+        this.ensureDir(this.tmpDir);
+        const ext = path.extname(filePath || "").toLowerCase();
+        const outPath = path.join(this.tmpDir, `${Date.now()}_ali_${itemNo || "manual"}.jpg`);
+
+        if (ext === ".jpg" || ext === ".jpeg") {
+            fs.copyFileSync(filePath, outPath);
+            return outPath;
+        }
+
+        const sharp = await this.ensureSharp();
+        await sharp(filePath).jpeg({ quality: 92 }).toFile(outPath);
+        return outPath;
     }
 
     async getCookieHeaderForAli() {
@@ -497,181 +598,158 @@ class AliExpressClient {
         throw new Error(`알리 이미지 업로드 실패: ${String(lastError?.message || lastError || "unknown")}`);
     }
 
-    async scrollResultListForMore(rounds = 5) {
+    async scrollOneStep(stepCount = 2) {
         if (!this.page) return;
 
-        for (let i = 0; i < rounds; i += 1) {
-            try {
-                await this.page.mouse.wheel(0, 2200).catch(() => {});
-                await this.page.waitForTimeout(450);
-            } catch {}
-        }
-
-        try {
+        for (let i = 0; i < stepCount; i += 1) {
             await this.page.evaluate(() => {
-                window.scrollTo(0, 0);
+                const amount = Math.max(420, Math.floor(window.innerHeight * 0.9));
+                window.scrollBy(0, amount);
             });
-        } catch {}
-
-        await this.page.waitForTimeout(120);
+            await this.page.waitForTimeout(700);
+        }
     }
 
-    async collectCandidatesFromPage(maxItems = 300) {
+    async collectVisibleCandidates(maxItems = 120) {
         if (!this.page) return [];
 
-        try {
-            await this.page.waitForTimeout(900);
-            await this.scrollResultListForMore(5);
+        await this.page.waitForTimeout(400);
 
-            const items = await this.page.evaluate((limit) => {
-                const clean = (value) =>
-                    String(value || "")
-                        .replace(/\s+/g, " ")
-                        .replace(/[\u200B-\u200D\uFEFF]/g, "")
-                        .trim();
+        const items = await this.page.evaluate((limit) => {
+            const clean = (value) =>
+                String(value || "")
+                    .replace(/\s+/g, " ")
+                    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+                    .trim();
 
-                const normalizeUrl = (url) => {
-                    const s = String(url || "").trim();
-                    if (!s) return "";
-                    if (s.startsWith("http://") || s.startsWith("https://")) return s;
-                    if (s.startsWith("//")) return `https:${s}`;
-                    if (s.startsWith("/")) return `https://ko.aliexpress.com${s}`;
-                    return s;
-                };
+            const stripAliAvifSuffix = (url) => {
+                const s = String(url || "").trim();
+                if (!s) return "";
+                return s
+                    .replace(/\.jpg_\.avif(\?.*)?$/i, ".jpg$1")
+                    .replace(/\.jpeg_\.avif(\?.*)?$/i, ".jpeg$1")
+                    .replace(/\.png_\.avif(\?.*)?$/i, ".png$1")
+                    .replace(/\.webp_\.avif(\?.*)?$/i, ".webp$1")
+                    .replace(/_\.avif(\?.*)?$/i, "$1");
+            };
 
-                const normalizeImg = (url) => {
-                    const s = String(url || "").trim();
-                    if (!s) return "";
-                    if (s.startsWith("data:image/")) return "";
-                    if (s.startsWith("http://") || s.startsWith("https://")) return s;
-                    if (s.startsWith("//")) return `https:${s}`;
-                    if (s.startsWith("/")) return `https://ko.aliexpress.com${s}`;
-                    return s;
-                };
+            const normalizeUrl = (url) => {
+                const s = String(url || "").trim();
+                if (!s) return "";
+                if (s.startsWith("http://") || s.startsWith("https://")) return s;
+                if (s.startsWith("//")) return `https:${s}`;
+                if (s.startsWith("/")) return `https://ko.aliexpress.com${s}`;
+                return s;
+            };
 
-                const result = [];
-                const anchors = Array.from(
-                    document.querySelectorAll('#card-list a[href*="/item/"], .search-card-item[href*="/item/"], a[href*="/item/"]')
-                );
+            const normalizeImg = (url) => {
+                const s = String(url || "").trim();
+                if (!s || s.startsWith("data:image/")) return "";
+                if (s.startsWith("http://") || s.startsWith("https://")) return stripAliAvifSuffix(s);
+                if (s.startsWith("//")) return stripAliAvifSuffix(`https:${s}`);
+                if (s.startsWith("/")) return stripAliAvifSuffix(`https://ko.aliexpress.com${s}`);
+                return stripAliAvifSuffix(s);
+            };
 
-                for (const a of anchors) {
-                    const box =
-                        a.closest(".search-item-card-wrapper-imageSearch") ||
-                        a.closest(".search-item-card-wrapper-gallery") ||
-                        a.closest(".search-item-card-wrapper") ||
-                        a.closest(".card-out-wrapper") ||
-                        a.closest("article") ||
-                        a.closest('[class*="card"]') ||
-                        a.closest("div");
+            const result = [];
+            const anchors = Array.from(
+                document.querySelectorAll('#card-list a[href*="/item/"], .search-card-item[href*="/item/"], a[href*="/item/"]')
+            ).slice(0, limit * 5);
 
-                    const titleNode =
-                        box?.querySelector('[class*="lw_k4"]') ||
-                        box?.querySelector('[class*="title"]') ||
-                        box?.querySelector("h1,h2,h3,h4");
+            for (const a of anchors) {
+                const box =
+                    a.closest(".search-item-card-wrapper-imageSearch") ||
+                    a.closest(".search-item-card-wrapper-gallery") ||
+                    a.closest(".card-out-wrapper") ||
+                    a.closest("article") ||
+                    a.closest("div");
 
-                    const priceNode =
-                        box?.querySelector('[class*="lw_el"]') ||
-                        box?.querySelector('[class*="price"]');
+                const titleNode =
+                    box?.querySelector(".lw_k4") ||
+                    box?.querySelector('[class*="title"]') ||
+                    box?.querySelector("h1,h2,h3,h4");
 
-                    const imgNode =
-                        box?.querySelector("img.product-img") ||
-                        box?.querySelector("img");
+                const priceNode =
+                    box?.querySelector(".lw_el") ||
+                    box?.querySelector('[class*="price"]');
 
-                    const title = clean(
-                        a.getAttribute("title") ||
-                        titleNode?.textContent ||
-                        a.textContent ||
+                const img =
+                    box?.querySelector(".lw_kn img.lw_eg.product-img") ||
+                    box?.querySelector(".lw_kn picture img.lw_eg.product-img") ||
+                    box?.querySelector(".lw_kn img.product-img") ||
+                    box?.querySelector("img.lw_eg.product-img");
+
+                const image = img
+                    ? normalizeImg(
+                        img.currentSrc ||
+                        img.getAttribute("currentSrc") ||
+                        img.getAttribute("src") ||
+                        img.getAttribute("data-src") ||
+                        img.getAttribute("image-src") ||
                         ""
-                    );
+                    )
+                    : "";
 
-                    const priceText = clean(
-                        priceNode?.getAttribute("aria-label") ||
-                        priceNode?.textContent ||
-                        ""
-                    );
+                result.push({
+                    title: clean(a.getAttribute("title") || titleNode?.textContent || a.textContent || ""),
+                    priceText: clean(priceNode?.getAttribute("aria-label") || priceNode?.textContent || ""),
+                    image,
+                    width: Number(img?.getAttribute("width") || img?.naturalWidth || 0),
+                    height: Number(img?.getAttribute("height") || img?.naturalHeight || 0),
+                    url: normalizeUrl(a.getAttribute("href") || a.href || "")
+                });
+            }
 
-                    const image = normalizeImg(
-                        imgNode?.getAttribute("src") ||
-                        imgNode?.getAttribute("data-src") ||
-                        imgNode?.getAttribute("image-src") ||
-                        imgNode?.getAttribute("srcset") ||
-                        ""
-                    );
+            return result;
+        }, maxItems);
 
-                    const url = normalizeUrl(a.getAttribute("href") || a.href || "");
-                    if (!url) continue;
-
-                    result.push({
-                        title,
-                        priceText,
-                        image,
-                        url
-                    });
-
-                    if (result.length >= limit * 3) break;
-                }
-
-                return result;
-            }, maxItems);
-
-            return this.dedupeAndSort(items, maxItems);
-        } catch (error) {
-            this.log(`⚠️ 알리 페이지 직접 파싱 실패: ${String(error?.message || error)}`);
-            return [];
-        }
+        return this.dedupeAndSort(
+            items.filter((item) => this.isValidProductImage(item.image, item)),
+            maxItems
+        );
     }
 
-    parseCandidatesFromHtml(html, maxItems = 300) {
-        const $ = cheerio.load(html);
-        const raw = [];
+    async loadMoreOnCurrentPage({ alreadyItems = [], maxItemsPerBatch = 36 } = {}) {
+        if (!this.page) {
+            return {
+                ok: false,
+                message: "알리 결과 페이지가 열려 있지 않습니다."
+            };
+        }
 
-        $('#card-list a[href*="/item/"], .search-card-item[href*="/item/"], a[href*="/item/"]').each((_, a) => {
-            const $a = $(a);
-            const href = $a.attr("href") || "";
+        if (this.currentScrollRound >= this.maxScrollRoundsPerPage) {
+            return {
+                ok: true,
+                items: alreadyItems,
+                addedCount: 0,
+                hasMore: false
+            };
+        }
 
-            const box =
-                $a.closest(".search-item-card-wrapper-imageSearch").length
-                    ? $a.closest(".search-item-card-wrapper-imageSearch")
-                    : $a.closest(".search-item-card-wrapper-gallery").length
-                        ? $a.closest(".search-item-card-wrapper-gallery")
-                        : $a.closest(".card-out-wrapper").length
-                            ? $a.closest(".card-out-wrapper")
-                            : $a.closest("article").length
-                                ? $a.closest("article")
-                                : $a.closest('[class*="card"]').length
-                                    ? $a.closest('[class*="card"]')
-                                    : $a.closest("div");
+        const prevUrls = new Set(
+            (Array.isArray(alreadyItems) ? alreadyItems : [])
+                .map((item) => this.normalizeAliUrl(item?.url))
+                .filter(Boolean)
+        );
 
-            const title =
-                $a.attr("title") ||
-                box.find(".lw_k4").first().text() ||
-                box.find('[class*="title"]').first().text() ||
-                box.find("h1,h2,h3,h4").first().text() ||
-                $a.text();
+        await this.scrollOneStep(2);
+        this.currentScrollRound += 1;
 
-            const img =
-                box.find("img.product-img").first().attr("src") ||
-                box.find("img").first().attr("src") ||
-                box.find("img").first().attr("data-src") ||
-                box.find("img").first().attr("image-src") ||
-                box.find("img").first().attr("srcset") ||
-                "";
-
-            const priceText =
-                box.find(".lw_el").first().attr("aria-label") ||
-                box.find(".lw_el").first().text() ||
-                box.find('[class*="price"]').first().text() ||
-                this.parsePrice(box.text());
-
-            raw.push({
-                title,
-                priceText,
-                image: img,
-                url: href
-            });
+        const visible = await this.collectVisibleCandidates(Math.max(120, maxItemsPerBatch * 4));
+        const fresh = visible.filter((item) => {
+            const url = this.normalizeAliUrl(item?.url);
+            return url && !prevUrls.has(url);
         });
 
-        return this.dedupeAndSort(raw, maxItems);
+        const appended = fresh.slice(0, maxItemsPerBatch);
+        const merged = this.dedupeAndSort([...(alreadyItems || []), ...appended], 300);
+
+        return {
+            ok: true,
+            items: merged,
+            addedCount: appended.length,
+            hasMore: appended.length > 0 && this.currentScrollRound < this.maxScrollRoundsPerPage
+        };
     }
 
     async fetchResultHtml(resultUrl) {
@@ -690,137 +768,50 @@ class AliExpressClient {
         return String(response.data || "");
     }
 
-    async collectCandidatesFast(resultUrl, maxItems = 300) {
-        if (!resultUrl) return [];
+    async searchByLocalImageFile({ filePath, itemNo, maxItemsPerPage = 36 }) {
+        await this.init();
+
+        this.searchSeq += 1;
+        const searchToken = this.searchSeq;
+        this.currentResultPage = 1;
+        this.resetIncrementalState();
 
         try {
-            const html = await this.fetchResultHtml(resultUrl);
-            const parsed = this.parseCandidatesFromHtml(html, maxItems);
-            if (parsed.length) {
-                this.log(`ℹ️ 알리 HTML 직접 파싱 성공: ${parsed.length}건`);
-                return parsed;
-            }
-        } catch (error) {
-            this.log(`⚠️ 알리 HTML 직접 파싱 실패: ${String(error?.message || error)}`);
-        }
-
-        return [];
-    }
-
-    async collectStableCandidates(resultUrl, maxItems = 300) {
-        let items = await this.collectCandidatesFast(resultUrl, maxItems);
-
-        if (items.length >= 20) {
-            return items;
-        }
-
-        await this.page.waitForTimeout(1400);
-
-        const secondTry = await this.collectCandidatesFast(resultUrl, maxItems);
-        if (secondTry.length > items.length) {
-            items = secondTry;
-        }
-
-        if (items.length >= 20) {
-            return items;
-        }
-
-        const pageItems = await this.collectCandidatesFromPage(maxItems);
-        if (pageItems.length > items.length) {
-            items = pageItems;
-        }
-
-        return items;
-    }
-
-    async tryGoNextResultPage(pageNo = 2) {
-        if (!this.page) return false;
-
-        const nextSelectors = [
-            'button[aria-label*="다음"]',
-            'button[aria-label*="Next"]',
-            'a[aria-label*="다음"]',
-            'a[aria-label*="Next"]',
-            '[class*="pagination-next"]',
-            '[class*="Pagination-next"]',
-            ".comet-pagination-next",
-            ".next-btn"
-        ];
-
-        for (const selector of nextSelectors) {
-            try {
-                const loc = this.page.locator(selector).first();
-                const count = await loc.count().catch(() => 0);
-                if (!count) continue;
-
-                const visible = await loc.isVisible().catch(() => false);
-                if (!visible) continue;
-
-                const beforeUrl = this.page.url();
-                await loc.click({ force: true, timeout: 1800 }).catch(() => {});
-                await this.waitForResultReady(beforeUrl);
-                return true;
-            } catch {}
-        }
-
-        try {
-            const currentUrl = this.page.url();
-            const nextUrl = new URL(currentUrl);
-            nextUrl.searchParams.set("page", String(pageNo));
-            await this.page.goto(nextUrl.toString(), {
+            await this.page.goto("https://ko.aliexpress.com/", {
                 waitUntil: "domcontentloaded",
                 timeout: 30000
             });
-            await this.page.waitForTimeout(1500);
-            return true;
-        } catch (error) {
-            this.log(`⚠️ 알리 다음 페이지 이동 실패: ${String(error?.message || error)}`);
-        }
+            await this.page.waitForTimeout(1200);
+        } catch {}
 
-        return false;
-    }
+        const preparedFilePath = await this.prepareLocalImageFile(filePath, itemNo);
 
-    async getNextPageCandidates(maxItems = 300) {
-        if (!this.page) {
-            return {
-                ok: false,
-                page: this.currentResultPage,
-                items: [],
-                message: "알리 결과 페이지가 열려 있지 않습니다."
-            };
-        }
+        this.log(`ℹ️ 알리 수동 이미지 검색 시작: no=${itemNo || "-"} / token=${searchToken}`);
+        const resultUrl = await this.uploadImage(preparedFilePath);
 
-        const nextPage = (this.currentResultPage || 1) + 1;
-        const moved = await this.tryGoNextResultPage(nextPage);
+        await this.page.waitForTimeout(1500);
+        const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
+        const sliced = firstPageItems.slice(0, maxItemsPerPage);
 
-        if (!moved) {
-            return {
-                ok: false,
-                page: this.currentResultPage,
-                items: [],
-                message: "다음 페이지로 이동하지 못했습니다."
-            };
-        }
-
-        this.currentResultPage = nextPage;
-        const items = await this.collectStableCandidates(this.page.url(), maxItems);
+        this.log(`✅ 알리 수동 후보 1차 수집 완료: page=1 / count=${sliced.length} / no=${itemNo || "-"}`);
 
         return {
-            ok: true,
-            page: nextPage,
-            items
+            searched: true,
+            resultUrl,
+            pages: [sliced],
+            candidates: sliced
         };
     }
 
-    async searchByImage({ imageUrl, itemNo, maxItemsPerPage = 300 }) {
+    async searchByImage({ imageUrl, itemNo, maxItemsPerPage = 36 }) {
         await this.init();
 
         this.searchSeq += 1;
         const searchToken = this.searchSeq;
 
         this.currentResultPage = 1;
+        this.resetIncrementalState();
 
-        // 이전 결과 UI/상태가 남지 않도록 짧게 홈으로 복귀
         try {
             await this.page.goto("https://ko.aliexpress.com/", {
                 waitUntil: "domcontentloaded",
@@ -835,15 +826,82 @@ class AliExpressClient {
         this.log(`ℹ️ 알리 이미지 검색 시작: no=${itemNo || "-"} / token=${searchToken}`);
 
         const resultUrl = await this.uploadImage(tmpFile);
-        const firstPageItems = await this.collectStableCandidates(resultUrl, maxItemsPerPage);
 
-        this.log(`✅ 알리 후보 수집 완료: page=1 / count=${firstPageItems.length} / no=${itemNo || "-"}`);
+        await this.page.waitForTimeout(1500);
+        const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
+        const sliced = firstPageItems.slice(0, maxItemsPerPage);
+
+        this.log(`✅ 알리 후보 1차 수집 완료: page=1 / count=${sliced.length} / no=${itemNo || "-"}`);
 
         return {
             searched: true,
             resultUrl,
-            pages: [firstPageItems],
-            candidates: firstPageItems
+            pages: [sliced],
+            candidates: sliced
+        };
+    }
+
+    async getNextPageCandidates(maxItemsPerPage = 36) {
+        if (!this.page) {
+            return {
+                ok: false,
+                message: "알리 페이지가 초기화되지 않았습니다."
+            };
+        }
+
+        const beforeUrl = this.page.url();
+
+        const nextSelectors = [
+            'button[aria-label="Next"]',
+            'button[aria-label="next"]',
+            '.comet-pagination-next button',
+            '.next-next',
+            'button.next-next',
+            'a.next-next'
+        ];
+
+        let moved = false;
+
+        for (const selector of nextSelectors) {
+            try {
+                const loc = this.page.locator(selector).first();
+                const count = await loc.count().catch(() => 0);
+                if (!count) continue;
+
+                const disabled =
+                    await loc.isDisabled().catch(() => false) ||
+                    (await loc.getAttribute("disabled").catch(() => null)) !== null ||
+                    String(await loc.getAttribute("class").catch(() => "")).includes("disabled");
+
+                if (disabled) continue;
+
+                await loc.click({ force: true, timeout: 2000 }).catch(() => {});
+                moved = true;
+                break;
+            } catch {}
+        }
+
+        if (!moved) {
+            return {
+                ok: false,
+                message: "다음 페이지 버튼을 찾지 못했습니다."
+            };
+        }
+
+        await this.waitForResultReady(beforeUrl);
+        this.currentResultPage += 1;
+        this.resetIncrementalState();
+
+        await this.page.waitForTimeout(1200);
+        const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
+        const sliced = firstPageItems.slice(0, maxItemsPerPage);
+
+        await this.dumpDebug(`ali_page_${this.currentResultPage}`);
+
+        return {
+            ok: true,
+            page: this.currentResultPage,
+            items: sliced
         };
     }
 }

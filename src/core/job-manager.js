@@ -1,4 +1,5 @@
 // src/core/job-manager.js
+const { app } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const { chromium } = require("playwright");
@@ -47,9 +48,12 @@ class JobManager {
     async ensureBrowser(headless) {
         if (this.browser) return;
 
+        const executablePath = this.getChromiumPath();
+
         this.browser = await chromium.launch({
             headless: !!headless,
-            slowMo: headless ? 0 : 50
+            slowMo: headless ? 0 : 50,
+            ...(executablePath ? { executablePath } : {})
         });
 
         this.aliClient = new AliExpressClient({
@@ -71,6 +75,32 @@ class JobManager {
         this.aliClient = null;
         this.browser = null;
         this.aliReady = false;
+    }
+
+    getChromiumPath() {
+        if (!app.isPackaged) return null;
+
+        const browsersDir = path.join(process.resourcesPath, "playwright-browsers");
+        if (!fs.existsSync(browsersDir)) {
+            return null;
+        }
+
+        const chromiumFolder = fs.readdirSync(browsersDir)
+            .find((name) => name.startsWith("chromium-"));
+
+        if (!chromiumFolder) {
+            return null;
+        }
+
+        const baseDir = path.join(browsersDir, chromiumFolder);
+
+        const candidates = [
+            path.join(baseDir, "chrome-win", "chrome.exe"),
+            path.join(baseDir, "chrome-win64", "chrome.exe")
+        ];
+
+        const found = candidates.find((p) => fs.existsSync(p));
+        return found || null;
     }
 
     loadOnestopProducts() {
@@ -140,6 +170,208 @@ class JobManager {
 
     buildSearchKeyword(item) {
         return this.normalizeKeyword(item?.title || "");
+    }
+
+    setLoadingState({ aliLoading = false, aliLoadingText = "", reviewLoading = false, reviewLoadingText = "" } = {}) {
+        this.stateStore.setCurrent({
+            isAliLoading: !!aliLoading,
+            aliLoadingText: aliLoadingText || "",
+            isReviewLoading: !!reviewLoading,
+            reviewLoadingText: reviewLoadingText || ""
+        });
+        this.emit();
+    }
+
+    normalizeOnestopOptions(found) {
+        const rawOptions = Array.isArray(found?.options) ? found.options : [];
+
+        if (!rawOptions.length) {
+            return [];
+        }
+
+        const basePrice = Number(found?.price ?? found?.goodsPrice ?? 0);
+
+        const isFlatOptionArray = rawOptions.every((opt) => {
+            return opt && !Array.isArray(opt?.values) && !Array.isArray(opt?.items) && !Array.isArray(opt?.options);
+        });
+
+        if (isFlatOptionArray) {
+            const values = rawOptions
+                .map((opt, idx) => {
+                    const name = String(
+                        opt?.optionName ||
+                        opt?.name ||
+                        opt?.value ||
+                        opt?.title ||
+                        `옵션${idx + 1}`
+                    ).trim();
+
+                    const addPrice = Number(opt?.addPrice ?? 0);
+                    const optionPrice = Number(opt?.optionPrice ?? (basePrice + addPrice));
+
+                    return {
+                        name,
+                        price: Number.isFinite(optionPrice) ? optionPrice : 0,
+                        diff: Number.isFinite(addPrice) ? addPrice : 0
+                    };
+                })
+                .filter((v) => v.name);
+
+            return values.length
+                ? [
+                    {
+                        optionName: "옵션",
+                        values
+                    }
+                ]
+                : [];
+        }
+
+        return rawOptions
+            .map((group, groupIndex) => {
+                const optionName = String(
+                    group?.optionName ||
+                    group?.name ||
+                    group?.title ||
+                    `옵션${groupIndex + 1}`
+                ).trim();
+
+                const rawValues = Array.isArray(group?.values)
+                    ? group.values
+                    : Array.isArray(group?.items)
+                        ? group.items
+                        : Array.isArray(group?.options)
+                            ? group.options
+                            : [];
+
+                const values = rawValues
+                    .map((value, valueIndex) => {
+                        const name = String(
+                            value?.name ||
+                            value?.value ||
+                            value?.optionValue ||
+                            value?.optionName ||
+                            value?.title ||
+                            value?.label ||
+                            `값${valueIndex + 1}`
+                        ).trim();
+
+                        const optionPrice = Number(
+                            value?.price ??
+                            value?.optionPrice ??
+                            value?.salePrice ??
+                            0
+                        );
+
+                        const addPrice = Number(
+                            value?.addPrice ??
+                            value?.extraPrice ??
+                            (optionPrice - basePrice) ??
+                            0
+                        );
+
+                        return {
+                            name,
+                            price: Number.isFinite(optionPrice) ? optionPrice : 0,
+                            diff: Number.isFinite(addPrice) ? addPrice : 0
+                        };
+                    })
+                    .filter((value) => value.name);
+
+                return {
+                    optionName,
+                    values
+                };
+            })
+            .filter((group) => group.optionName && group.values.length > 0);
+    }
+
+    normalizeOnestopProduct(found) {
+        if (!found) return null;
+
+        return {
+            exists: true,
+            no: Number(found.no),
+            url: String(found.url || ""),
+            finalUrl: String(found.finalUrl || found.url || ""),
+            title: String(found.title || "").trim(),
+            price: found.price ?? found.goodsPrice ?? null,
+            priceText: (found.price ?? found.goodsPrice) != null ? String(found.price ?? found.goodsPrice) : "",
+            thumbnailUrl: String(found.thumbnailUrl || found.thumbnail || ""),
+            category: String(found.category || "").trim(),
+            options: this.normalizeOnestopOptions(found)
+        };
+    }
+
+    getProductsForRange(numbers) {
+        const targetSet = new Set(numbers.map((n) => Number(n)));
+
+        const all = this.loadOnestopProducts()
+            .filter((item) => item && Number.isFinite(Number(item.no)) && targetSet.has(Number(item.no)))
+            .map((item) => this.normalizeOnestopProduct(item))
+            .filter(Boolean);
+
+        return this.sortProductsByInputRange(all, numbers);
+    }
+
+    getOnestopItemByNo(no) {
+        const all = this.loadOnestopProducts();
+        const found = all.find((item) => Number(item?.no) === Number(no));
+        if (!found) return null;
+
+        return this.normalizeOnestopProduct(found);
+    }
+
+    async applyDecision(onestopItem, selloResult, candidates, aliPages, decision, searchKeyword) {
+        const selectedAli = Array.isArray(decision?.selectedAliCandidates)
+            ? decision.selectedAliCandidates.slice(0, 10)
+            : [];
+
+        const normalizedOptions = Array.isArray(onestopItem?.options) ? onestopItem.options : [];
+
+        const baseRecord = {
+            createdAt: new Date().toISOString(),
+            searchKeyword,
+            onestop: {
+                ...onestopItem,
+                options: normalizedOptions
+            },
+            sello: {
+                rawCount: candidates?.rawCount ?? null,
+                smartKeywords: selloResult?.smartKeywords || [],
+                coupangKeywords: selloResult?.coupangKeywords || [],
+                smartCandidate: candidates?.smartCandidate || null,
+                coupangCandidate: candidates?.coupangCandidate || null
+            },
+            aliexpress: {
+                searched: true,
+                queryImage: onestopItem.thumbnailUrl || "",
+                selected: selectedAli
+            }
+        };
+
+        if (decision.action === "smartstore") {
+            this.db.appendSmartstore({ ...baseRecord, matched: candidates?.smartCandidate || null });
+            this.stateStore.incrementCount("smartstore");
+            this.log(`✅ 스마트스토어 확정: ${onestopItem.no}`);
+            return;
+        }
+
+        if (decision.action === "coupang") {
+            this.db.appendCoupang({ ...baseRecord, matched: candidates?.coupangCandidate || null });
+            this.stateStore.incrementCount("coupang");
+            this.log(`✅ 쿠팡 확정: ${onestopItem.no}`);
+            return;
+        }
+
+        this.db.appendPassed({
+            ...baseRecord,
+            reason: decision.action || "manual_pass",
+            passReasonCode: decision.passReasonCode || "other",
+            passReasonText: decision.passReasonText || "기타 사유"
+        });
+        this.stateStore.incrementCount("passed");
+        this.log(`⏭ 패스: ${onestopItem.no} / ${decision.passReasonText || decision.passReasonCode || "기타 사유"}`);
     }
 
     loadResumeProgress() {
@@ -358,33 +590,6 @@ class JobManager {
         return `원스톱 상품번호 ${doneText} 완료 / ${nextNo}번부터 다시 시작합니다.`;
     }
 
-    getProductsForRange(numbers) {
-        const targetSet = new Set(numbers.map((n) => Number(n)));
-        const all = this.loadOnestopProducts().filter(
-            (item) => item && Number.isFinite(Number(item.no)) && targetSet.has(Number(item.no))
-        );
-
-        return this.sortProductsByInputRange(all, numbers);
-    }
-
-    getOnestopItemByNo(no) {
-        const all = this.loadOnestopProducts();
-        const found = all.find((item) => Number(item?.no) === Number(no));
-        if (!found) return null;
-
-        return {
-            exists: true,
-            no: Number(found.no),
-            url: String(found.url || ""),
-            finalUrl: String(found.url || ""),
-            title: String(found.title || "").trim(),
-            price: found.price ?? null,
-            priceText: found.price != null ? String(found.price) : "",
-            thumbnailUrl: String(found.thumbnail || ""),
-            category: String(found.category || "").trim()
-        };
-    }
-
     async start({ rangeText, headless, selloCookie }) {
         if (this.running) {
             return { ok: false, message: "이미 실행 중입니다." };
@@ -456,7 +661,8 @@ class JobManager {
             workflowStage: "SEARCHING",
             aliCandidates: [],
             aliCandidatePages: [],
-            aliPage: 1
+            aliPage: 1,
+            aliHasMore: true
         });
         this.emit();
 
@@ -681,8 +887,13 @@ class JobManager {
             aliCandidates: Array.isArray(aliPages[0]) ? aliPages[0] : [],
             aliCandidatePages: aliPages,
             aliPage: 1,
+            aliHasMore: true,
             workflowStage: "KEYWORD_FIX",
-            noticeMessage: this.resumeNoticeMessage || noticeMessage
+            noticeMessage: this.resumeNoticeMessage || noticeMessage,
+            isAliLoading: false,
+            aliLoadingText: "",
+            isReviewLoading: false,
+            reviewLoadingText: ""
         });
         this.emit();
 
@@ -699,8 +910,13 @@ class JobManager {
             aliCandidates: Array.isArray(aliPages[0]) ? aliPages[0] : [],
             aliCandidatePages: aliPages,
             aliPage: 1,
+            aliHasMore: true,
             workflowStage: "REVIEW",
-            noticeMessage: this.resumeNoticeMessage || noticeMessage
+            noticeMessage: this.resumeNoticeMessage || noticeMessage,
+            isAliLoading: false,
+            aliLoadingText: "",
+            isReviewLoading: false,
+            reviewLoadingText: ""
         });
         this.emit();
 
@@ -717,8 +933,13 @@ class JobManager {
             aliCandidates: [],
             aliCandidatePages: [],
             aliPage: 1,
+            aliHasMore: true,
             workflowStage: "SEARCHING",
-            noticeMessage: isEditMode ? `${onestopItem.no}번 수정 모드` : (this.resumeNoticeMessage || "")
+            noticeMessage: isEditMode ? `${onestopItem.no}번 수정 모드` : (this.resumeNoticeMessage || ""),
+            isAliLoading: false,
+            aliLoadingText: "",
+            isReviewLoading: false,
+            reviewLoadingText: ""
         });
         this.emit();
 
@@ -730,7 +951,11 @@ class JobManager {
             onestop: onestopItem,
             searchKeyword: activeKeyword,
             workflowStage: "SEARCHING",
-            noticeMessage: isEditMode ? `${onestopItem.no}번 수정 모드` : (this.resumeNoticeMessage || "")
+            noticeMessage: isEditMode ? `${onestopItem.no}번 수정 모드` : (this.resumeNoticeMessage || ""),
+            isAliLoading: !!onestopItem.thumbnailUrl,
+            aliLoadingText: onestopItem.thumbnailUrl ? "알리 이미지 후보를 불러오는 중입니다..." : "",
+            isReviewLoading: false,
+            reviewLoadingText: ""
         });
         this.emit();
 
@@ -742,7 +967,7 @@ class JobManager {
                 const ali = await this.aliClient.searchByImage({
                     imageUrl: onestopItem.thumbnailUrl,
                     itemNo: onestopItem.no,
-                    maxItemsPerPage: 300
+                    maxItemsPerPage: 36
                 });
                 aliPages = Array.isArray(ali?.pages) ? ali.pages : [];
             } catch (error) {
@@ -755,6 +980,16 @@ class JobManager {
 
         const aliTotal = aliPages.reduce((acc, page) => acc + (Array.isArray(page) ? page.length : 0), 0);
         this.log(`ℹ️ 알리 후보 총 수: ${aliTotal}`);
+
+        this.stateStore.setCurrent({
+            isAliLoading: false,
+            aliLoadingText: "",
+            isReviewLoading: true,
+            reviewLoadingText: activeKeyword
+                ? `셀록홈즈 후보를 불러오는 중입니다... (${activeKeyword})`
+                : "셀록홈즈 후보를 불러오는 중입니다..."
+        });
+        this.emit();
 
         while (true) {
             this.log(`- 셀록 검색: ${activeKeyword}`);
@@ -790,7 +1025,7 @@ class JobManager {
             }
 
             const reviewNotice = aliTotal > 0
-                ? "알리 1페이지 후보를 먼저 보여줍니다. 더 필요하면 '다음'을 눌러 알리 실제 다음 페이지로 이동합니다."
+                ? "알리 후보를 먼저 일부만 보여줍니다. 더 필요하면 '더보기'로 현재 페이지를 추가 로딩하고, '다음 페이지'로 알리 실제 다음 페이지로 이동합니다."
                 : "알리 이미지가 없습니다. 스마트스토어/쿠팡 후보를 확인하거나 패스를 저장하세요.";
 
             const decision = await this.waitForReview(
@@ -811,8 +1046,15 @@ class JobManager {
                     aliCandidates: Array.isArray(aliPages[0]) ? aliPages[0] : [],
                     aliCandidatePages: aliPages,
                     aliPage: 1,
+                    aliHasMore: true,
                     workflowStage: "SEARCHING",
-                    noticeMessage: isEditMode ? `${onestopItem.no}번 수정 모드` : (this.resumeNoticeMessage || "")
+                    noticeMessage: isEditMode ? `${onestopItem.no}번 수정 모드` : (this.resumeNoticeMessage || ""),
+                    isAliLoading: false,
+                    aliLoadingText: "",
+                    isReviewLoading: true,
+                    reviewLoadingText: activeKeyword
+                        ? `셀록홈즈 후보를 불러오는 중입니다... (${activeKeyword})`
+                        : "셀록홈즈 후보를 불러오는 중입니다..."
                 });
                 this.emit();
                 continue;
@@ -835,31 +1077,20 @@ class JobManager {
         });
 
         this.stateStore.incrementProcessed(1);
-        this.stateStore.clearPendingDecision();
-        this.stateStore.clearCandidates();
-        this.stateStore.setCurrent({
-            noticeMessage: isEditMode ? `${onestopItem.no}번 수정 완료` : (this.resumeNoticeMessage || ""),
-            aliCandidates: [],
-            aliCandidatePages: [],
-            aliPage: 1,
-            workflowStage: "SEARCHING"
-        });
-        this.stateStore.setStatus("RUNNING");
         this.emit();
     }
 
     async run(products, credentials) {
-        await this.ensureBrowser(credentials.headless);
+        await this.ensureBrowser(!!credentials.headless);
 
         const sello = new SelloClient({
             cookie: credentials.selloCookie,
             logger: (msg) => this.log(msg)
         });
 
-        for (const item of products) {
+        for (const onestopItem of products) {
             if (this.stopRequested) break;
 
-            const onestopItem = this.getOnestopItemByNo(item.no);
             if (!onestopItem) continue;
 
             try {
@@ -934,54 +1165,7 @@ class JobManager {
         this.emit();
     }
 
-    async applyDecision(onestopItem, selloResult, candidates, aliPages, decision, searchKeyword) {
-        const selectedAli = Array.isArray(decision?.selectedAliCandidates)
-            ? decision.selectedAliCandidates.slice(0, 10)
-            : [];
-
-        const baseRecord = {
-            createdAt: new Date().toISOString(),
-            searchKeyword,
-            onestop: onestopItem,
-            sello: {
-                rawCount: candidates?.rawCount ?? null,
-                smartKeywords: selloResult?.smartKeywords || [],
-                coupangKeywords: selloResult?.coupangKeywords || [],
-                smartCandidate: candidates?.smartCandidate || null,
-                coupangCandidate: candidates?.coupangCandidate || null
-            },
-            aliexpress: {
-                searched: true,
-                queryImage: onestopItem.thumbnailUrl || "",
-                selected: selectedAli
-            }
-        };
-
-        if (decision.action === "smartstore") {
-            this.db.appendSmartstore({ ...baseRecord, matched: candidates?.smartCandidate || null });
-            this.stateStore.incrementCount("smartstore");
-            this.log(`✅ 스마트스토어 확정: ${onestopItem.no}`);
-            return;
-        }
-
-        if (decision.action === "coupang") {
-            this.db.appendCoupang({ ...baseRecord, matched: candidates?.coupangCandidate || null });
-            this.stateStore.incrementCount("coupang");
-            this.log(`✅ 쿠팡 확정: ${onestopItem.no}`);
-            return;
-        }
-
-        this.db.appendPassed({
-            ...baseRecord,
-            reason: decision.action || "manual_pass",
-            passReasonCode: decision.passReasonCode || "other",
-            passReasonText: decision.passReasonText || "기타 사유"
-        });
-        this.stateStore.incrementCount("passed");
-        this.log(`⏭ 패스: ${onestopItem.no} / ${decision.passReasonText || decision.passReasonCode || "기타 사유"}`);
-    }
-
-    async loadNextAliPage(maxItemsPerPage = 300) {
+    async loadNextAliPage(maxItemsPerPage = 36) {
         if (!this.aliClient) {
             return {
                 ok: false,
@@ -993,8 +1177,21 @@ class JobManager {
         const current = state?.current || {};
         const loadedPages = Array.isArray(current.aliCandidatePages) ? current.aliCandidatePages : [];
 
+        this.stateStore.setCurrent({
+            isAliLoading: true,
+            aliLoadingText: "알리 다음 페이지를 불러오는 중입니다..."
+        });
+        this.emit();
+
         const next = await this.aliClient.getNextPageCandidates(maxItemsPerPage);
+
+        this.stateStore.setCurrent({
+            isAliLoading: false,
+            aliLoadingText: ""
+        });
+
         if (!next?.ok) {
+            this.emit();
             return next;
         }
 
@@ -1005,6 +1202,7 @@ class JobManager {
             aliCandidatePages: newPages,
             aliCandidates: newPages[next.page - 1] || [],
             aliPage: next.page,
+            aliHasMore: true,
             noticeMessage: this.resumeNoticeMessage || current.noticeMessage || ""
         });
         this.emit();
@@ -1013,6 +1211,64 @@ class JobManager {
             ok: true,
             page: next.page,
             items: next.items || []
+        };
+    }
+
+    async loadMoreAliInCurrentPage({ maxItemsPerBatch = 36 } = {}) {
+        if (!this.aliClient) {
+            return {
+                ok: false,
+                message: "알리 클라이언트가 준비되지 않았습니다."
+            };
+        }
+
+        const state = this.stateStore.getState();
+        const current = state?.current || {};
+        const currentPageNo = Number(current.aliPage || 1);
+        const loadedPages = Array.isArray(current.aliCandidatePages) ? current.aliCandidatePages.slice() : [];
+        const pageIndex = Math.max(0, currentPageNo - 1);
+        const currentItems = Array.isArray(loadedPages[pageIndex]) ? loadedPages[pageIndex] : [];
+
+        this.stateStore.setCurrent({
+            isAliLoading: true,
+            aliLoadingText: "알리 현재 페이지를 더 불러오는 중입니다..."
+        });
+        this.emit();
+
+        const more = await this.aliClient.loadMoreOnCurrentPage({
+            alreadyItems: currentItems,
+            maxItemsPerBatch
+        });
+
+        this.stateStore.setCurrent({
+            isAliLoading: false,
+            aliLoadingText: ""
+        });
+
+        if (!more?.ok) {
+            this.emit();
+            return more;
+        }
+
+        loadedPages[pageIndex] = Array.isArray(more.items) ? more.items : currentItems;
+
+        this.stateStore.setCurrent({
+            aliCandidatePages: loadedPages,
+            aliCandidates: loadedPages[pageIndex] || [],
+            aliPage: currentPageNo,
+            aliHasMore: !!more.hasMore,
+            noticeMessage: more.addedCount > 0
+                ? `알리 현재 페이지에서 ${more.addedCount}건 추가로 불러왔습니다.`
+                : "더 이상 새로 불러올 알리 이미지가 없습니다."
+        });
+        this.emit();
+
+        return {
+            ok: true,
+            page: currentPageNo,
+            items: loadedPages[pageIndex] || [],
+            addedCount: Number(more.addedCount || 0),
+            hasMore: !!more.hasMore
         };
     }
 
@@ -1047,6 +1303,62 @@ class JobManager {
             };
         } catch (error) {
             this.aliReady = false;
+            return {
+                ok: false,
+                message: String(error?.message || error)
+            };
+        }
+    }
+
+    async searchAliWithManualFile({ onestopNo, filePath, maxItemsPerPage = 36 }) {
+        if (!this.aliReady) {
+            return {
+                ok: false,
+                message: "먼저 알리 준비 완료를 눌러주세요."
+            };
+        }
+
+        const onestopItem = this.getOnestopItemByNo(onestopNo);
+        if (!onestopItem) {
+            return {
+                ok: false,
+                message: `${onestopNo}번 원스톱 상품을 찾지 못했습니다.`
+            };
+        }
+
+        try {
+            const result = await this.aliClient.searchByLocalImageFile({
+                filePath,
+                itemNo: onestopNo,
+                maxItemsPerPage
+            });
+
+            const state = this.stateStore.getState();
+            const current = state?.current || {};
+
+            this.stateStore.setCurrent({
+                onestop: onestopItem,
+                searchKeyword: current.searchKeyword || this.buildSearchKeyword(onestopItem),
+                aliCandidates: Array.isArray(result?.pages?.[0]) ? result.pages[0] : [],
+                aliCandidatePages: Array.isArray(result?.pages) ? result.pages : [],
+                aliPage: 1,
+                aliHasMore: true,
+                workflowStage: current.workflowStage || "REVIEW",
+                noticeMessage: "직접 업로드한 이미지로 알리 재검색을 완료했습니다.",
+                isAliLoading: false,
+                aliLoadingText: "",
+                isReviewLoading: false,
+                reviewLoadingText: ""
+            });
+            this.emit();
+
+            this.log(`✅ 알리 수동 이미지 재검색 완료: no=${onestopNo} / count=${result?.candidates?.length || 0}`);
+
+            return {
+                ok: true,
+                count: result?.candidates?.length || 0
+            };
+        } catch (error) {
             return {
                 ok: false,
                 message: String(error?.message || error)

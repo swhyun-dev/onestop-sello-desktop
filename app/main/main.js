@@ -1,5 +1,6 @@
 // app/main/main.js
 const path = require("node:path");
+const fs = require("node:fs");
 const { app, BrowserWindow } = require("electron");
 const dotenv = require("dotenv");
 const { JobManager } = require("../../src/core/job-manager");
@@ -13,8 +14,42 @@ let mainWindow = null;
 let jobManager = null;
 let stateStore = null;
 
+function copySeedFileIfMissing(dataDir, filename) {
+    try {
+        const targetPath = path.join(dataDir, filename);
+
+        if (fs.existsSync(targetPath)) {
+            return;
+        }
+
+        const seedPath = app.isPackaged
+            ? path.join(process.resourcesPath, "seed", filename)
+            : path.resolve(process.cwd(), "data", filename);
+
+        if (!fs.existsSync(seedPath)) {
+            console.warn(`[main] seed file not found: ${seedPath}`);
+            return;
+        }
+
+        fs.mkdirSync(dataDir, { recursive: true });
+        fs.copyFileSync(seedPath, targetPath);
+        console.log(`[main] seed copied: ${filename}`);
+    } catch (error) {
+        console.error(`[main] seed copy failed: ${filename}`, error);
+    }
+}
+
+function ensureSeedFiles(dataDir) {
+    copySeedFileIfMissing(dataDir, "onestop_products.json");
+    copySeedFileIfMissing(dataDir, "onestop-storage.json");
+}
+
 function createWindow() {
-    const dataDir = path.resolve(process.cwd(), "data");
+    const dataDir = app.isPackaged
+        ? path.join(app.getPath("userData"), "data")
+        : path.resolve(process.cwd(), "data");
+
+    ensureSeedFiles(dataDir);
 
     stateStore = createStateStore({ dataDir });
 
@@ -44,27 +79,9 @@ function createWindow() {
     const rendererPath = path.join(__dirname, "../renderer/index.html");
     mainWindow.loadFile(rendererPath);
 
-    mainWindow.webContents.on("did-finish-load", () => {
-        console.log("[main] renderer loaded");
-    });
-
-    mainWindow.webContents.on("did-fail-load", (_event, code, desc, validatedURL) => {
-        console.error("[main] did-fail-load:", {
-            code,
-            desc,
-            validatedURL
-        });
-    });
-
-    mainWindow.webContents.on("render-process-gone", (_event, details) => {
-        console.error("[main] render-process-gone:", details);
-    });
-
-    mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
-        console.log(`[renderer:${level}] ${message} (${sourceId}:${line})`);
-    });
-
-    mainWindow.webContents.openDevTools({ mode: "detach" });
+    if (!app.isPackaged) {
+        mainWindow.webContents.openDevTools({ mode: "detach" });
+    }
 }
 
 app.whenReady().then(() => {

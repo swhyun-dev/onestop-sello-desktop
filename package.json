@@ -2,22 +2,60 @@
   "name": "onestop-sello-desktop",
   "version": "0.1.0",
   "private": true,
+  "description": "원스톱도매/셀록홈즈 크롤링 데스크톱 프로그램",
+  "author": "Seungwoo Hyun",
   "main": "app/main/main.js",
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "dev": "electron ."
+    "dev": "electron .",
+    "pw:install": "playwright install chromium",
+    "dist:win": "electron-builder --win nsis"
   },
   "dependencies": {
     "axios": "^1.13.6",
     "cheerio": "^1.2.0",
     "dotenv": "^16.5.0",
-    "electron": "^35.1.5",
     "playwright": "^1.52.0",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "xlsx": "^0.18.5"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": ""
+  "devDependencies": {
+    "electron": "^35.1.5",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.onestop.sello.desktop",
+    "productName": "원스톱도매 크롤러",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**/*",
+      "src/**/*",
+      "scripts/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/playwright-core/.local-browsers",
+        "to": "playwright-browsers"
+      },
+      {
+        "from": "data/onestop_products.json",
+        "to": "seed/onestop_products.json"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
 }

@@ -1,4 +1,4 @@
-<!-- app/renderer/index.html -->
+// app/renderer/index.html
 <!doctype html>
 <html lang="ko">
 <head>
@@ -11,12 +11,14 @@
     <header class="topbar">
         <div>
             <h1 class="page-title">원스톱/셀록홈즈 크롤러</h1>
-            <div class="page-subtitle">알리 후보 1페이지 먼저 표시 / 다음 누를 때 알리도 실제 다음 페이지 이동</div>
+            <div class="page-subtitle">알리 후보를 먼저 일부만 표시하고, 더보기로 현재 페이지를 추가 로딩합니다.</div>
         </div>
 
         <div class="controls">
             <button id="refreshUiBtn" class="ghost">UI 새로고침</button>
             <button id="clearSavedBtn" class="ghost">저장값 초기화</button>
+            <button id="editCurrentBtn" class="ghost">현재 상품 재선택</button>
+            <button id="editByNoBtn" class="ghost">상품번호 재선택</button>
         </div>
     </header>
 
@@ -76,14 +78,6 @@
         </div>
     </section>
 
-    <section class="card loading-card" id="loadingCard" style="display:none;">
-        <h2>조회 중</h2>
-        <div class="loading-row">
-            <div id="loadingSpinner" class="spinner"></div>
-            <div id="loadingText" class="loading-text">셀록홈즈 / 알리익스프레스 결과를 불러오는 중입니다...</div>
-        </div>
-    </section>
-
     <section class="card notice-card" id="noticeCard" style="display:none;">
         <h2>안내</h2>
         <div id="noticeText" class="notice-text">-</div>
@@ -100,6 +94,12 @@
                 <div id="onestopTitle" class="title">-</div>
                 <div id="onestopPrice" class="meta">-</div>
                 <div id="onestopUrl" class="meta small">-</div>
+
+                <div class="review-divider"></div>
+                <div class="review-block">
+                    <h3>원스톱 옵션</h3>
+                    <div id="onestopOptions" class="meta">옵션 없음</div>
+                </div>
             </section>
         </div>
 
@@ -112,7 +112,15 @@
                     </div>
 
                     <div class="controls">
+                        <button id="manualAliSearchBtn" class="ghost">직접 이미지로 알리 재검색</button>
                         <button id="aliClearSelectionBtn" class="ghost">선택 초기화</button>
+                    </div>
+                </div>
+
+                <div id="aliLoadingCard" class="panel-loading-card" style="display:none;">
+                    <div class="loading-row">
+                        <div class="spinner"></div>
+                        <div id="aliLoadingText" class="loading-text">알리 이미지를 불러오는 중입니다...</div>
                     </div>
                 </div>
 
@@ -125,10 +133,14 @@
                 <div class="ali-pagination-bar">
                     <button id="aliPrevPageBtn" class="ghost">이전</button>
                     <div id="aliPageInfo" class="meta">1 / 1</div>
-                    <button id="aliNextPageBtn" class="ghost">다음</button>
+                    <button id="aliNextPageBtn" class="ghost">다음 페이지</button>
                 </div>
 
                 <div id="aliCandidatesContainer" class="ali-grid"></div>
+
+                <div class="ali-load-more-wrap">
+                    <button id="aliLoadMoreBtn" class="primary">더보기</button>
+                </div>
             </section>
         </div>
 
@@ -141,6 +153,13 @@
 
                 <div class="meta review-guide">
                     알리 후보를 선택한 뒤, 스마트스토어/쿠팡/패스를 바로 선택하세요.
+                </div>
+
+                <div id="reviewLoadingCard" class="panel-loading-card review" style="display:none;">
+                    <div class="loading-row">
+                        <div class="spinner"></div>
+                        <div id="reviewLoadingText" class="loading-text">셀록홈즈 후보를 불러오는 중입니다...</div>
+                    </div>
                 </div>
 
                 <div class="review-block">
@@ -205,6 +224,17 @@
         <h2>로그</h2>
         <pre id="logBox" class="logbox"></pre>
     </section>
+</div>
+
+<div id="aliSelectionDock" class="ali-selection-dock" style="display:none;">
+    <div class="ali-selection-dock-head">
+        <div>
+            <div class="ali-selection-dock-title">선택한 알리 이미지</div>
+            <div id="aliSelectionDockInfo" class="ali-selection-dock-meta">0 / 10</div>
+        </div>
+        <button id="aliDockClearBtn" class="ghost" type="button">전체 해제</button>
+    </div>
+    <div id="aliSelectionDockList" class="ali-selection-dock-list"></div>
 </div>
 
 <script src="./renderer.js"></script>
