@@ -135,6 +135,21 @@ function registerCrawlIpc(jobManager) {
             };
         }
     });
+
+    ipcMain.handle("crawl:ali-select-choice-image", async (_event, payload) => {
+        try {
+            return await jobManager.selectAliChoiceImage({
+                index: Number(payload?.index),
+                onestopNo: Number(payload?.onestopNo),
+                maxItemsPerPage: Number(payload?.maxItemsPerPage) || 36
+            });
+        } catch (error) {
+            return {
+                ok: false,
+                message: String(error?.message || error)
+            };
+        }
+    });
 }
 
 module.exports = { registerCrawlIpc };

@@ -27,12 +27,14 @@ const els = {
 
     aliCandidatesContainer: document.getElementById("aliCandidatesContainer"),
     aliSelectionInfo: document.getElementById("aliSelectionInfo"),
-    aliSelectedStrip: document.getElementById("aliSelectedStrip"),
     aliEmptyState: document.getElementById("aliEmptyState"),
 
-    aliSelectionDock: document.getElementById("aliSelectionDock"),
+    aliChoiceSection: document.getElementById("aliChoiceSection"),
+    aliChoiceContainer: document.getElementById("aliChoiceContainer"),
+
     aliSelectionDockInfo: document.getElementById("aliSelectionDockInfo"),
     aliSelectionDockList: document.getElementById("aliSelectionDockList"),
+    aliSelectionDockEmpty: document.getElementById("aliSelectionDockEmpty"),
     aliDockClearBtn: document.getElementById("aliDockClearBtn"),
 
     startBtn: document.getElementById("startBtn"),
@@ -101,6 +103,67 @@ function escapeHtml(value) {
         .replace(/'/g, "&#039;");
 }
 
+function getAliItemKey(item) {
+    if (!item) return "";
+    return String(item.image || item.url || item.id || "").trim();
+}
+
+function hasSelectedAliItem(item) {
+    const key = getAliItemKey(item);
+    if (!key) return false;
+    return aliState.selectedMap.has(key);
+}
+
+function addSelectedAliItem(item) {
+    const key = getAliItemKey(item);
+    if (!key) return;
+    if (aliState.selectedMap.has(key)) return;
+    aliState.selectedMap.set(key, {
+        image: item.image || "",
+        url: item.url || "",
+        id: item.id || "",
+        title: item.title || ""
+    });
+}
+
+function removeSelectedAliItem(itemOrKey) {
+    const key = typeof itemOrKey === "string" ? itemOrKey : getAliItemKey(itemOrKey);
+    if (!key) return;
+    aliState.selectedMap.delete(key);
+}
+
+function getSelectedAliEntries() {
+    return Array.from(aliState.selectedMap.entries()).slice(0, 10).map(([key, item], idx) => ({
+        key,
+        item,
+        order: idx + 1
+    }));
+}
+
+function getSelectedAliCandidates() {
+    return getSelectedAliEntries().map(({ item }) => item);
+}
+
+function resetAliSelectionForItem(itemNo) {
+    aliState.currentItemNo = itemNo || null;
+    aliState.selectedMap.clear();
+    aliState.currentPage = 1;
+}
+
+function flattenAliPages(aliPages) {
+    const out = [];
+    (Array.isArray(aliPages) ? aliPages : []).forEach((page, pageIndex) => {
+        (Array.isArray(page) ? page : []).forEach((item, itemIndex) => {
+            out.push({
+                ...item,
+                __page: pageIndex + 1,
+                __pageIndex: itemIndex
+            });
+        });
+    });
+    return out;
+}
+
 function renderOnestopOptions(options) {
     if (!els.onestopOptions) return;
 
@@ -136,93 +199,6 @@ function renderOnestopOptions(options) {
             </div>
         `;
     }).join("");
-}
-
-async function startEditFlow(onestopNo) {
-    if (!hasApi()) {
-        alert("preload 연결 실패");
-        return;
-    }
-
-    if (!window.crawlerApi.startEditItem) {
-        alert("startEditItem API가 없습니다. preload / ipc 반영 후 앱을 완전히 재실행해주세요.");
-        return;
-    }
-
-    const settings = getFormSettings();
-    if (!settings.selloCookie) {
-        alert("셀록홈즈 Cookie 전체 문자열을 입력해주세요.");
-        return;
-    }
-
-    const ok = window.confirm(
-        `${onestopNo}번 상품을 다시 선택하시겠습니까?\n기존 저장 결과는 같은 상품번호 기준으로 교체됩니다.`
-    );
-    if (!ok) return;
-
-    try {
-        const res = await window.crawlerApi.startEditItem({
-            onestopNo,
-            headless: settings.headless,
-            selloCookie: settings.selloCookie
-        });
-
-        if (!res?.ok) {
-            alert(res?.message || "재선택 시작 실패");
-            return;
-        }
-
-        alert(`${onestopNo}번 재선택 모드를 시작했습니다.`);
-        await refreshState();
-    } catch (error) {
-        alert(`재선택 시작 실패: ${String(error?.message || error)}`);
-    }
-}
-
-async function startManualAliSearchFlow() {
-    if (!hasApi()) {
-        alert("preload 연결 실패");
-        return;
-    }
-
-    if (!window.crawlerApi.pickImageAndSearchAli) {
-        alert("pickImageAndSearchAli API가 없습니다. preload / ipc 반영 후 앱을 완전히 재실행해주세요.");
-        return;
-    }
-
-    const state = await window.crawlerApi.getState();
-    const currentNo = Number(state?.current?.onestop?.no);
-    const stage = String(state?.current?.workflowStage || "");
-
-    if (!Number.isFinite(currentNo) || currentNo <= 0) {
-        alert("현재 상품번호가 없습니다.");
-        return;
-    }
-
-    if (!["REVIEW", "KEYWORD_FIX", "SEARCHING"].includes(stage)) {
-        alert("현재 단계에서는 알리 수동 재검색을 사용할 수 없습니다.");
-        return;
-    }
-
-    aliState.selectedMap.clear();
-
-    try {
-        const res = await window.crawlerApi.pickImageAndSearchAli({
-            onestopNo: currentNo,
-            maxItemsPerPage: 36
-        });
-
-        if (!res?.ok) {
-            alert(res?.message || "알리 수동 재검색 실패");
-            await refreshState();
-            return;
-        }
-
-        alert(`직접 업로드 이미지로 알리 재검색 완료 / ${res.count || 0}건`);
-        await refreshState();
-    } catch (error) {
-        alert(`알리 수동 재검색 실패: ${String(error?.message || error)}`);
-    }
 }
 
 function renderNotice(message) {
@@ -346,61 +322,20 @@ function getSelectedPassReason() {
     };
 }
 
-function resetAliSelectionForItem(itemNo) {
-    aliState.currentItemNo = itemNo || null;
-    aliState.selectedMap.clear();
-    aliState.currentPage = 1;
-}
-
-function flattenAliPages(aliPages) {
-    const out = [];
-    (Array.isArray(aliPages) ? aliPages : []).forEach((page, pageIndex) => {
-        (Array.isArray(page) ? page : []).forEach((item, itemIndex) => {
-            out.push({
-                ...item,
-                __page: pageIndex + 1,
-                __pageIndex: itemIndex
-            });
-        });
-    });
-    return out;
-}
-
-function getSelectedAliEntries() {
-    return Array.from(aliState.selectedMap.entries())
-        .slice(0, 10)
-        .map(([key, item], idx) => ({
-            key,
-            item,
-            order: idx + 1
-        }));
-}
-
-function getSelectedAliCandidates() {
-    return getSelectedAliEntries().map(({ item }) => item);
-}
-
-function removeAliSelectionByKey(key) {
-    aliState.selectedMap.delete(key);
-}
-
 function updateAliSelectionInfo(totalPages) {
     const countText = `선택 ${aliState.selectedMap.size} / 10`;
     els.aliSelectionInfo.textContent = countText;
     els.aliPageInfo.textContent = `${aliState.currentPage} / ${Math.max(totalPages, 1)}`;
-
-    if (els.aliSelectionDockInfo) {
-        els.aliSelectionDockInfo.textContent = countText;
-    }
+    els.aliSelectionDockInfo.textContent = countText;
 }
 
-function buildSelectedImageCard(entry, extraClass = "") {
+function buildSelectedImageCard(entry) {
     const image = escapeHtml(entry?.item?.image || "");
     const order = Number(entry?.order || 0);
     const key = escapeHtml(entry?.key || "");
 
     return `
-        <div class="selected-image-card ${extraClass}" data-selected-key="${key}" title="선택 ${order}">
+        <div class="selected-image-card" data-selected-key="${key}" title="선택 ${order}">
             <button type="button" class="selected-image-remove" data-remove-selected-key="${key}" aria-label="선택 제거">×</button>
             <img src="${image}" alt="" />
             <div class="selected-image-order">${order}</div>
@@ -409,71 +344,95 @@ function buildSelectedImageCard(entry, extraClass = "") {
     `;
 }
 
-function bindSelectedStripEvents(aliPages, workflowStage, itemNo) {
+function bindSelectedLeftEvents() {
     const removeButtons = document.querySelectorAll("[data-remove-selected-key]");
     removeButtons.forEach((btn) => {
         btn.addEventListener("click", (event) => {
             event.preventDefault();
             event.stopPropagation();
-
             const key = btn.getAttribute("data-remove-selected-key");
-            if (!key) return;
-
-            removeAliSelectionByKey(key);
-            renderAliCandidates(aliPages, workflowStage, itemNo);
-        });
-    });
-
-    const cards = document.querySelectorAll("[data-selected-key]");
-    cards.forEach((card) => {
-        card.addEventListener("click", () => {
-            const key = card.getAttribute("data-selected-key");
-            if (!key) return;
-
-            const parts = key.split(":");
-            const page = Number(parts[0]);
-            if (Number.isFinite(page) && page > 0) {
-                aliState.currentPage = page;
-                renderAliCandidates(aliPages, workflowStage, itemNo);
-
-                const selectedCardInGrid = els.aliCandidatesContainer.querySelector(".ali-item.is-selected");
-                if (selectedCardInGrid && typeof selectedCardInGrid.scrollIntoView === "function") {
-                    selectedCardInGrid.scrollIntoView({ behavior: "smooth", block: "center" });
-                }
-            }
+            removeSelectedAliItem(key);
+            renderSelectedLeftPanel();
+            const current = window.__lastCrawlerState?.current || {};
+            renderAliCandidates(current.aliCandidatePages || [], current.workflowStage || "SEARCHING", current.onestop?.no || null);
         });
     });
 }
 
-function renderSelectedStrip(aliPages = [], workflowStage = "SEARCHING", itemNo = null) {
+function renderSelectedLeftPanel() {
     const selectedEntries = getSelectedAliEntries();
 
     if (!selectedEntries.length) {
-        els.aliSelectedStrip.style.display = "none";
-        els.aliSelectedStrip.innerHTML = "";
-
-        if (els.aliSelectionDock) {
-            els.aliSelectionDock.style.display = "none";
-        }
-        if (els.aliSelectionDockList) {
-            els.aliSelectionDockList.innerHTML = "";
-        }
+        els.aliSelectionDockList.innerHTML = "";
+        els.aliSelectionDockEmpty.style.display = "block";
         return;
     }
 
-    els.aliSelectedStrip.style.display = "grid";
-    els.aliSelectedStrip.innerHTML = selectedEntries
+    els.aliSelectionDockEmpty.style.display = "none";
+    els.aliSelectionDockList.innerHTML = selectedEntries
         .map((entry) => buildSelectedImageCard(entry))
         .join("");
 
-    if (els.aliSelectionDock && els.aliSelectionDockList) {
-        els.aliSelectionDock.style.display = "block";
-        els.aliSelectionDockList.innerHTML = selectedEntries
-            .map((entry) => buildSelectedImageCard(entry, "is-dock"))
-            .join("");
+    bindSelectedLeftEvents();
+}
+
+async function renderAliChoiceImages(choiceImages = []) {
+    const items = Array.isArray(choiceImages) ? choiceImages : [];
+
+    if (!items.length) {
+        els.aliChoiceSection.style.display = "none";
+        els.aliChoiceContainer.innerHTML = "";
+        return;
     }
 
-    bindSelectedStripEvents(aliPages, workflowStage, itemNo);
+    els.aliChoiceSection.style.display = "block";
+    els.aliChoiceContainer.innerHTML = items.map((item, idx) => {
+        const image = escapeHtml(item?.image || "");
+        const active = item?.selected ? "is-active" : "";
+        return `
+            <button type="button" class="ali-choice-item ${active}" data-choice-index="${idx}" title="상품 선택 ${idx + 1}">
+                <img src="${image}" alt="" />
+                ${item?.selected ? `<div class="ali-choice-badge">✓</div>` : ""}
+            </button>
+        `;
+    }).join("");
+
+    const buttons = els.aliChoiceContainer.querySelectorAll("[data-choice-index]");
+    buttons.forEach((button) => {
+        button.addEventListener("click", async () => {
+            if (!hasApi()) {
+                alert("preload 연결 실패");
+                return;
+            }
+
+            const index = Number(button.getAttribute("data-choice-index"));
+            if (!Number.isFinite(index)) return;
+
+            const current = window.__lastCrawlerState?.current || {};
+            const onestopNo = Number(current?.onestop?.no || 0);
+            if (!onestopNo) {
+                alert("현재 상품번호가 없습니다.");
+                return;
+            }
+
+            try {
+                const res = await window.crawlerApi.selectAliChoiceImage({
+                    index,
+                    onestopNo,
+                    maxItemsPerPage: 36
+                });
+
+                if (!res?.ok) {
+                    alert(res?.message || "알리 상품 선택 재검색 실패");
+                    return;
+                }
+
+                await refreshState();
+            } catch (error) {
+                alert(`알리 상품 선택 재검색 실패: ${String(error?.message || error)}`);
+            }
+        });
+    });
 }
 
 function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo = null) {
@@ -483,6 +442,7 @@ function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo 
 
     const pages = Array.isArray(aliPages) ? aliPages : [];
     const totalPages = pages.length || 1;
+
     if (aliState.currentPage > totalPages) {
         aliState.currentPage = totalPages;
     }
@@ -494,7 +454,8 @@ function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo 
         els.aliEmptyState.style.display = "block";
         els.aliCandidatesContainer.style.display = "none";
         updateAliSelectionInfo(totalPages);
-        renderSelectedStrip(aliPages, workflowStage, itemNo);
+        renderSelectedLeftPanel();
+
         const isAliLoading = !!window.__lastCrawlerState?.current?.isAliLoading;
         els.aliPrevPageBtn.disabled = true;
         els.aliNextPageBtn.disabled = isAliLoading;
@@ -508,10 +469,11 @@ function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo 
     els.aliEmptyState.style.display = "none";
     els.aliCandidatesContainer.style.display = "grid";
 
-    pageItems.forEach((item, idx) => {
-        const key = `${aliState.currentPage}:${idx}`;
-        const selected = aliState.selectedMap.has(key);
-        const order = Array.from(aliState.selectedMap.keys()).indexOf(key) + 1;
+    pageItems.forEach((item) => {
+        const selected = hasSelectedAliItem(item);
+        const selectedEntries = getSelectedAliEntries();
+        const key = getAliItemKey(item);
+        const order = selectedEntries.find((entry) => entry.key === key)?.order || 0;
 
         const card = document.createElement("button");
         card.type = "button";
@@ -528,16 +490,17 @@ function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo 
         card.addEventListener("click", () => {
             if (workflowStage !== "REVIEW") return;
 
-            if (aliState.selectedMap.has(key)) {
-                aliState.selectedMap.delete(key);
+            if (hasSelectedAliItem(item)) {
+                removeSelectedAliItem(item);
             } else {
                 if (aliState.selectedMap.size >= 10) {
                     alert("알리 이미지는 최대 10개까지 선택할 수 있습니다.");
                     return;
                 }
-                aliState.selectedMap.set(key, item);
+                addSelectedAliItem(item);
             }
 
+            renderSelectedLeftPanel();
             renderAliCandidates(aliPages, workflowStage, itemNo);
         });
 
@@ -558,7 +521,7 @@ function renderAliCandidates(aliPages = [], workflowStage = "SEARCHING", itemNo 
     }
 
     updateAliSelectionInfo(totalPages);
-    renderSelectedStrip(aliPages, workflowStage, itemNo);
+    renderSelectedLeftPanel();
 }
 
 function renderState(state) {
@@ -603,6 +566,7 @@ function renderState(state) {
         els.keywordInput.value = decision.searchKeyword;
     }
 
+    renderAliChoiceImages(current.aliChoiceImages || []);
     renderAliCandidates(current.aliCandidatePages || [], stage, current.onestop?.no || null);
     els.logBox.textContent = (state.logs || []).slice(-300).join("\n");
 }
@@ -646,6 +610,90 @@ async function handleDecision(payload, failMessage) {
 async function getCurrentReviewState() {
     const state = await window.crawlerApi.getState();
     return state?.current || {};
+}
+
+async function startEditFlow(onestopNo) {
+    if (!hasApi()) {
+        alert("preload 연결 실패");
+        return;
+    }
+
+    if (!window.crawlerApi.startEditItem) {
+        alert("startEditItem API가 없습니다. preload / ipc 반영 후 앱을 완전히 재실행해주세요.");
+        return;
+    }
+
+    const settings = getFormSettings();
+    if (!settings.selloCookie) {
+        alert("셀록홈즈 Cookie 전체 문자열을 입력해주세요.");
+        return;
+    }
+
+    const ok = window.confirm(
+        `${onestopNo}번 상품을 다시 선택하시겠습니까?\n기존 저장 결과는 같은 상품번호 기준으로 교체됩니다.`
+    );
+    if (!ok) return;
+
+    try {
+        const res = await window.crawlerApi.startEditItem({
+            onestopNo,
+            headless: settings.headless,
+            selloCookie: settings.selloCookie
+        });
+
+        if (!res?.ok) {
+            alert(res?.message || "재선택 시작 실패");
+            return;
+        }
+
+        alert(`${onestopNo}번 재선택 모드를 시작했습니다.`);
+        await refreshState();
+    } catch (error) {
+        alert(`재선택 시작 실패: ${String(error?.message || error)}`);
+    }
+}
+
+async function startManualAliSearchFlow() {
+    if (!hasApi()) {
+        alert("preload 연결 실패");
+        return;
+    }
+
+    if (!window.crawlerApi.pickImageAndSearchAli) {
+        alert("pickImageAndSearchAli API가 없습니다. preload / ipc 반영 후 앱을 완전히 재실행해주세요.");
+        return;
+    }
+
+    const state = await window.crawlerApi.getState();
+    const currentNo = Number(state?.current?.onestop?.no);
+    const stage = String(state?.current?.workflowStage || "");
+
+    if (!Number.isFinite(currentNo) || currentNo <= 0) {
+        alert("현재 상품번호가 없습니다.");
+        return;
+    }
+
+    if (!["REVIEW", "KEYWORD_FIX", "SEARCHING"].includes(stage)) {
+        alert("현재 단계에서는 알리 수동 재검색을 사용할 수 없습니다.");
+        return;
+    }
+
+    try {
+        const res = await window.crawlerApi.pickImageAndSearchAli({
+            onestopNo: currentNo,
+            maxItemsPerPage: 36
+        });
+
+        if (!res?.ok) {
+            alert(res?.message || "알리 수동 재검색 실패");
+            await refreshState();
+            return;
+        }
+
+        await refreshState();
+    } catch (error) {
+        alert(`알리 수동 재검색 실패: ${String(error?.message || error)}`);
+    }
 }
 
 els.aliPrevPageBtn.addEventListener("click", async () => {
@@ -707,20 +755,18 @@ els.aliLoadMoreBtn.addEventListener("click", async () => {
 });
 
 els.aliClearSelectionBtn.addEventListener("click", async () => {
-    const current = await getCurrentReviewState();
     aliState.selectedMap.clear();
+    renderSelectedLeftPanel();
+    const current = await getCurrentReviewState();
     renderAliCandidates(current.aliCandidatePages || [], current.workflowStage || "SEARCHING", current.onestop?.no || null);
 });
 
 if (els.aliDockClearBtn) {
     els.aliDockClearBtn.addEventListener("click", async () => {
-        const current = await getCurrentReviewState();
         aliState.selectedMap.clear();
-        renderAliCandidates(
-            current.aliCandidatePages || [],
-            current.workflowStage || "SEARCHING",
-            current.onestop?.no || null
-        );
+        renderSelectedLeftPanel();
+        const current = await getCurrentReviewState();
+        renderAliCandidates(current.aliCandidatePages || [], current.workflowStage || "SEARCHING", current.onestop?.no || null);
     });
 }
 
@@ -929,6 +975,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     loadUiSettings();
     bindAutoSave();
     bindKeywordEditingState();
+    renderSelectedLeftPanel();
     await refreshState();
 
     if (hasApi()) {

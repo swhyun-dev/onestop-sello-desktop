@@ -194,6 +194,7 @@ async function main() {
                     optionSummary: detail.optionSummary,
                     optionAddPriceSummary: detail.optionAddPriceSummary,
                     detailHtml: detail.detailHtml,
+                    detailImages: detail.detailImages,
                     hasOptions: detail.hasOptions,
                     loginRequired: detail.loginRequired,
                     optionUpdatedAt: new Date().toISOString()

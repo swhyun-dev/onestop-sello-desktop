@@ -960,6 +960,7 @@ class JobManager {
         this.emit();
 
         let aliPages = [];
+        let choiceImages = [];
 
         if (onestopItem.thumbnailUrl) {
             try {
@@ -970,8 +971,10 @@ class JobManager {
                     maxItemsPerPage: 36
                 });
                 aliPages = Array.isArray(ali?.pages) ? ali.pages : [];
+                choiceImages = Array.isArray(ali?.choiceImages) ? ali.choiceImages : [];
             } catch (error) {
                 aliPages = [];
+                choiceImages = [];
                 this.log(`⚠️ 알리 이미지 검색 실패(${onestopItem.no}): ${String(error?.message || error)}`);
             }
         } else {
@@ -985,6 +988,7 @@ class JobManager {
             isAliLoading: false,
             aliLoadingText: "",
             isReviewLoading: true,
+            aliChoiceImages: choiceImages,
             reviewLoadingText: activeKeyword
                 ? `셀록홈즈 후보를 불러오는 중입니다... (${activeKeyword})`
                 : "셀록홈즈 후보를 불러오는 중입니다..."
@@ -1177,21 +1181,8 @@ class JobManager {
         const current = state?.current || {};
         const loadedPages = Array.isArray(current.aliCandidatePages) ? current.aliCandidatePages : [];
 
-        this.stateStore.setCurrent({
-            isAliLoading: true,
-            aliLoadingText: "알리 다음 페이지를 불러오는 중입니다..."
-        });
-        this.emit();
-
         const next = await this.aliClient.getNextPageCandidates(maxItemsPerPage);
-
-        this.stateStore.setCurrent({
-            isAliLoading: false,
-            aliLoadingText: ""
-        });
-
         if (!next?.ok) {
-            this.emit();
             return next;
         }
 
@@ -1201,8 +1192,8 @@ class JobManager {
         this.stateStore.setCurrent({
             aliCandidatePages: newPages,
             aliCandidates: newPages[next.page - 1] || [],
+            aliChoiceImages: Array.isArray(next.choiceImages) ? next.choiceImages : (current.aliChoiceImages || []),
             aliPage: next.page,
-            aliHasMore: true,
             noticeMessage: this.resumeNoticeMessage || current.noticeMessage || ""
         });
         this.emit();
@@ -1213,6 +1204,166 @@ class JobManager {
             items: next.items || []
         };
     }
+
+    async searchAliWithManualFile({ onestopNo, filePath, maxItemsPerPage = 36 }) {
+        if (!this.aliReady) {
+            return {
+                ok: false,
+                message: "먼저 알리 준비 완료를 눌러주세요."
+            };
+        }
+
+        const onestopItem = this.getOnestopItemByNo(onestopNo);
+        if (!onestopItem) {
+            return {
+                ok: false,
+                message: `${onestopNo}번 원스톱 상품을 찾지 못했습니다.`
+            };
+        }
+
+        try {
+            const result = await this.aliClient.searchByLocalImageFile({
+                filePath,
+                itemNo: onestopNo,
+                maxItemsPerPage
+            });
+
+            const state = this.stateStore.getState();
+            const current = state?.current || {};
+
+            this.stateStore.setCurrent({
+                onestop: onestopItem,
+                searchKeyword: current.searchKeyword || this.buildSearchKeyword(onestopItem),
+                aliCandidates: Array.isArray(result?.pages?.[0]) ? result.pages[0] : [],
+                aliCandidatePages: Array.isArray(result?.pages) ? result.pages : [],
+                aliChoiceImages: Array.isArray(result?.choiceImages) ? result.choiceImages : [],
+                aliPage: 1,
+                workflowStage: current.workflowStage || "REVIEW",
+                noticeMessage: "직접 업로드한 이미지로 알리 재검색을 완료했습니다.",
+                isAliLoading: false,
+                aliLoadingText: "",
+                isReviewLoading: false,
+                reviewLoadingText: ""
+            });
+            this.emit();
+
+            return {
+                ok: true,
+                count: result?.candidates?.length || 0
+            };
+        } catch (error) {
+            return {
+                ok: false,
+                message: String(error?.message || error)
+            };
+        }
+    }
+
+    async selectAliChoiceImage({ index, onestopNo, maxItemsPerPage = 36 }) {
+        if (!this.aliReady) {
+            return {
+                ok: false,
+                message: "먼저 알리 준비 완료를 눌러주세요."
+            };
+        }
+
+        if (!Number.isFinite(index) || index < 0) {
+            return {
+                ok: false,
+                message: "유효한 상품 선택 인덱스가 아닙니다."
+            };
+        }
+
+        const onestopItem = this.getOnestopItemByNo(onestopNo);
+        if (!onestopItem) {
+            return {
+                ok: false,
+                message: `${onestopNo}번 원스톱 상품을 찾지 못했습니다.`
+            };
+        }
+
+        try {
+            const result = await this.aliClient.selectChoiceImageAndCollect(index, maxItemsPerPage);
+
+            const state = this.stateStore.getState();
+            const current = state?.current || {};
+
+            this.stateStore.setCurrent({
+                onestop: onestopItem,
+                searchKeyword: current.searchKeyword || this.buildSearchKeyword(onestopItem),
+                aliCandidates: Array.isArray(result?.pages?.[0]) ? result.pages[0] : [],
+                aliCandidatePages: Array.isArray(result?.pages) ? result.pages : [],
+                aliChoiceImages: Array.isArray(result?.choiceImages) ? result.choiceImages : [],
+                aliPage: 1,
+                workflowStage: current.workflowStage || "REVIEW",
+                noticeMessage: "알리 상품 선택 이미지를 기준으로 다시 검색했습니다.",
+                isAliLoading: false,
+                aliLoadingText: "",
+                isReviewLoading: false,
+                reviewLoadingText: ""
+            });
+            this.emit();
+
+            return {
+                ok: true,
+                count: result?.candidates?.length || 0
+            };
+        } catch (error) {
+            return {
+                ok: false,
+                message: String(error?.message || error)
+            };
+        }
+    }
+
+    // async loadNextAliPage(maxItemsPerPage = 36) {
+    //     if (!this.aliClient) {
+    //         return {
+    //             ok: false,
+    //             message: "알리 클라이언트가 준비되지 않았습니다."
+    //         };
+    //     }
+    //
+    //     const state = this.stateStore.getState();
+    //     const current = state?.current || {};
+    //     const loadedPages = Array.isArray(current.aliCandidatePages) ? current.aliCandidatePages : [];
+    //
+    //     this.stateStore.setCurrent({
+    //         isAliLoading: true,
+    //         aliLoadingText: "알리 다음 페이지를 불러오는 중입니다..."
+    //     });
+    //     this.emit();
+    //
+    //     const next = await this.aliClient.getNextPageCandidates(maxItemsPerPage);
+    //
+    //     this.stateStore.setCurrent({
+    //         isAliLoading: false,
+    //         aliLoadingText: ""
+    //     });
+    //
+    //     if (!next?.ok) {
+    //         this.emit();
+    //         return next;
+    //     }
+    //
+    //     const newPages = loadedPages.slice();
+    //     newPages[next.page - 1] = Array.isArray(next.items) ? next.items : [];
+    //
+    //     this.stateStore.setCurrent({
+    //         aliCandidatePages: newPages,
+    //         aliCandidates: newPages[next.page - 1] || [],
+    //         aliPage: next.page,
+    //         aliHasMore: true,
+    //         noticeMessage: this.resumeNoticeMessage || current.noticeMessage || ""
+    //     });
+    //     this.emit();
+    //
+    //     return {
+    //         ok: true,
+    //         page: next.page,
+    //         items: next.items || []
+    //     };
+    // }
 
     async loadMoreAliInCurrentPage({ maxItemsPerBatch = 36 } = {}) {
         if (!this.aliClient) {
@@ -1310,61 +1461,61 @@ class JobManager {
         }
     }
 
-    async searchAliWithManualFile({ onestopNo, filePath, maxItemsPerPage = 36 }) {
-        if (!this.aliReady) {
-            return {
-                ok: false,
-                message: "먼저 알리 준비 완료를 눌러주세요."
-            };
-        }
-
-        const onestopItem = this.getOnestopItemByNo(onestopNo);
-        if (!onestopItem) {
-            return {
-                ok: false,
-                message: `${onestopNo}번 원스톱 상품을 찾지 못했습니다.`
-            };
-        }
-
-        try {
-            const result = await this.aliClient.searchByLocalImageFile({
-                filePath,
-                itemNo: onestopNo,
-                maxItemsPerPage
-            });
-
-            const state = this.stateStore.getState();
-            const current = state?.current || {};
-
-            this.stateStore.setCurrent({
-                onestop: onestopItem,
-                searchKeyword: current.searchKeyword || this.buildSearchKeyword(onestopItem),
-                aliCandidates: Array.isArray(result?.pages?.[0]) ? result.pages[0] : [],
-                aliCandidatePages: Array.isArray(result?.pages) ? result.pages : [],
-                aliPage: 1,
-                aliHasMore: true,
-                workflowStage: current.workflowStage || "REVIEW",
-                noticeMessage: "직접 업로드한 이미지로 알리 재검색을 완료했습니다.",
-                isAliLoading: false,
-                aliLoadingText: "",
-                isReviewLoading: false,
-                reviewLoadingText: ""
-            });
-            this.emit();
-
-            this.log(`✅ 알리 수동 이미지 재검색 완료: no=${onestopNo} / count=${result?.candidates?.length || 0}`);
-
-            return {
-                ok: true,
-                count: result?.candidates?.length || 0
-            };
-        } catch (error) {
-            return {
-                ok: false,
-                message: String(error?.message || error)
-            };
-        }
-    }
+    // async searchAliWithManualFile({ onestopNo, filePath, maxItemsPerPage = 36 }) {
+    //     if (!this.aliReady) {
+    //         return {
+    //             ok: false,
+    //             message: "먼저 알리 준비 완료를 눌러주세요."
+    //         };
+    //     }
+    //
+    //     const onestopItem = this.getOnestopItemByNo(onestopNo);
+    //     if (!onestopItem) {
+    //         return {
+    //             ok: false,
+    //             message: `${onestopNo}번 원스톱 상품을 찾지 못했습니다.`
+    //         };
+    //     }
+    //
+    //     try {
+    //         const result = await this.aliClient.searchByLocalImageFile({
+    //             filePath,
+    //             itemNo: onestopNo,
+    //             maxItemsPerPage
+    //         });
+    //
+    //         const state = this.stateStore.getState();
+    //         const current = state?.current || {};
+    //
+    //         this.stateStore.setCurrent({
+    //             onestop: onestopItem,
+    //             searchKeyword: current.searchKeyword || this.buildSearchKeyword(onestopItem),
+    //             aliCandidates: Array.isArray(result?.pages?.[0]) ? result.pages[0] : [],
+    //             aliCandidatePages: Array.isArray(result?.pages) ? result.pages : [],
+    //             aliPage: 1,
+    //             aliHasMore: true,
+    //             workflowStage: current.workflowStage || "REVIEW",
+    //             noticeMessage: "직접 업로드한 이미지로 알리 재검색을 완료했습니다.",
+    //             isAliLoading: false,
+    //             aliLoadingText: "",
+    //             isReviewLoading: false,
+    //             reviewLoadingText: ""
+    //         });
+    //         this.emit();
+    //
+    //         this.log(`✅ 알리 수동 이미지 재검색 완료: no=${onestopNo} / count=${result?.candidates?.length || 0}`);
+    //
+    //         return {
+    //             ok: true,
+    //             count: result?.candidates?.length || 0
+    //         };
+    //     } catch (error) {
+    //         return {
+    //             ok: false,
+    //             message: String(error?.message || error)
+    //         };
+    //     }
+    // }
 }
 
 module.exports = { JobManager };

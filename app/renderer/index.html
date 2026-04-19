@@ -1,4 +1,4 @@
-// app/renderer/index.html
+<!-- app/renderer/index.html-->
 <!doctype html>
 <html lang="ko">
 <head>
@@ -11,7 +11,7 @@
     <header class="topbar">
         <div>
             <h1 class="page-title">원스톱/셀록홈즈 크롤러</h1>
-            <div class="page-subtitle">알리 후보를 먼저 일부만 표시하고, 더보기로 현재 페이지를 추가 로딩합니다.</div>
+            <div class="page-subtitle">알리 후보를 먼저 일부만 표시하고, 더보기/다음 페이지/상품 선택 이미지 클릭으로 탐색합니다.</div>
         </div>
 
         <div class="controls">
@@ -90,6 +90,7 @@
                     <h2>원스톱 원본상품</h2>
                     <span class="badge">기준 이미지</span>
                 </div>
+
                 <img id="onestopImage" class="preview" alt="" />
                 <div id="onestopTitle" class="title">-</div>
                 <div id="onestopPrice" class="meta">-</div>
@@ -99,6 +100,17 @@
                 <div class="review-block">
                     <h3>원스톱 옵션</h3>
                     <div id="onestopOptions" class="meta">옵션 없음</div>
+                </div>
+
+                <div class="review-divider"></div>
+                <div class="review-block">
+                    <div class="panel-head panel-head-inline">
+                        <h3>선택한 알리 이미지</h3>
+                        <button id="aliDockClearBtn" class="ghost" type="button">전체 해제</button>
+                    </div>
+                    <div id="aliSelectionDockInfo" class="meta small">선택 0 / 10</div>
+                    <div id="aliSelectionDockList" class="selected-left-grid"></div>
+                    <div id="aliSelectionDockEmpty" class="meta small muted-box">선택한 이미지가 없습니다.</div>
                 </div>
             </section>
         </div>
@@ -124,11 +136,17 @@
                     </div>
                 </div>
 
+                <div id="aliChoiceSection" class="ali-choice-wrap" style="display:none;">
+                    <div class="ali-choice-head">
+                        <div class="ali-choice-title">상품을 선택하세요</div>
+                        <div class="ali-choice-sub">클릭하면 알리에서 해당 이미지 기준으로 다시 검색합니다.</div>
+                    </div>
+                    <div id="aliChoiceContainer" class="ali-choice-grid"></div>
+                </div>
+
                 <div id="aliEmptyState" class="empty-state" style="display:none;">
                     알리 이미지가 없습니다.
                 </div>
-
-                <div id="aliSelectedStrip" class="selected-strip" style="display:none;"></div>
 
                 <div class="ali-pagination-bar">
                     <button id="aliPrevPageBtn" class="ghost">이전</button>
@@ -224,17 +242,6 @@
         <h2>로그</h2>
         <pre id="logBox" class="logbox"></pre>
     </section>
-</div>
-
-<div id="aliSelectionDock" class="ali-selection-dock" style="display:none;">
-    <div class="ali-selection-dock-head">
-        <div>
-            <div class="ali-selection-dock-title">선택한 알리 이미지</div>
-            <div id="aliSelectionDockInfo" class="ali-selection-dock-meta">0 / 10</div>
-        </div>
-        <button id="aliDockClearBtn" class="ghost" type="button">전체 해제</button>
-    </div>
-    <div id="aliSelectionDockList" class="ali-selection-dock-list"></div>
 </div>
 
 <script src="./renderer.js"></script>

@@ -68,6 +68,7 @@ class AliExpressClient {
 
         const width = Number(meta.width || 0);
         const height = Number(meta.height || 0);
+
         if ((width && width < 120) || (height && height < 120)) {
             return false;
         }
@@ -149,7 +150,7 @@ class AliExpressClient {
     normalizeAliImage(url) {
         let s = String(url || "").trim();
         if (!s) return "";
-        if (s.startsWith("data:image/")) return "";
+        if (s.startsWith("data:image/")) return s;
         if (s.startsWith("http://") || s.startsWith("https://")) return this.stripAliAvifSuffix(s);
         if (s.startsWith("//")) return this.stripAliAvifSuffix(`https:${s}`);
         if (s.startsWith("/")) return this.stripAliAvifSuffix(`https://ko.aliexpress.com${s}`);
@@ -166,21 +167,11 @@ class AliExpressClient {
         for (const candidate of candidates) {
             const src = this.normalizeAliImage(candidate);
             if (!src) continue;
+            if (src.startsWith("data:image/")) return src;
             if (!this.isValidProductImage(src)) continue;
             return src;
         }
         return "";
-    }
-
-    parsePrice(text) {
-        const s = this.cleanText(text);
-        const m =
-            s.match(/(US \$\s?\d[\d.,]*)/i) ||
-            s.match(/(₩\s?\d[\d,]*)/i) ||
-            s.match(/(KRW\s?\d[\d,]*)/i) ||
-            s.match(/(\d[\d,]*\s?원)/i);
-
-        return m ? this.cleanText(m[1]) : "";
     }
 
     scoreCandidate(item) {
@@ -317,15 +308,6 @@ class AliExpressClient {
         const sharp = await this.ensureSharp();
         await sharp(filePath).jpeg({ quality: 92 }).toFile(outPath);
         return outPath;
-    }
-
-    async getCookieHeaderForAli() {
-        if (!this.context) return "";
-        const cookies = await this.context.cookies("https://ko.aliexpress.com/");
-        if (!Array.isArray(cookies) || !cookies.length) {
-            return "";
-        }
-        return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
     }
 
     async openPreparePage() {
@@ -509,9 +491,7 @@ class AliExpressClient {
         if (!opened) return null;
 
         input = await this.findFileInputQuick();
-        if (input) return input;
-
-        return null;
+        return input || null;
     }
 
     async confirmManualReady() {
@@ -543,13 +523,12 @@ class AliExpressClient {
     async waitForResultReady(previousUrl = "") {
         if (!this.page) return "";
 
-        const start = Date.now();
-
         try {
             await this.page.waitForFunction(
                 (prev) => {
                     const hasItems = !!document.querySelector('#card-list a[href*="/item/"], .search-card-item[href*="/item/"], a[href*="/item/"]');
-                    return window.location.href !== prev || hasItems;
+                    const hasChoice = !!document.querySelector(".e9_fb .e9_fi");
+                    return window.location.href !== prev || hasItems || hasChoice;
                 },
                 previousUrl,
                 { timeout: 9000 }
@@ -557,14 +536,8 @@ class AliExpressClient {
         } catch {}
 
         await this.page.waitForTimeout(1400);
-
-        try {
-            await this.page.waitForLoadState("domcontentloaded", { timeout: 2500 }).catch(() => {});
-            await this.page.waitForLoadState("networkidle", { timeout: 2500 }).catch(() => {});
-        } catch {}
-
-        const waitedMs = Date.now() - start;
-        this.log(`ℹ️ 알리 결과 대기 완료: ${waitedMs}ms`);
+        await this.page.waitForLoadState("domcontentloaded", { timeout: 2500 }).catch(() => {});
+        await this.page.waitForLoadState("networkidle", { timeout: 2500 }).catch(() => {});
 
         return this.page.url();
     }
@@ -586,16 +559,58 @@ class AliExpressClient {
     }
 
     async uploadImage(imagePath) {
-        let lastError = null;
+        return await this.uploadImageFromPreparedPage(imagePath);
+    }
+
+    async collectChoiceImages() {
+        if (!this.page) return [];
+
+        await this.page.waitForTimeout(500).catch(() => {});
 
         try {
-            return await this.uploadImageFromPreparedPage(imagePath);
-        } catch (error) {
-            lastError = error;
+            const items = await this.page.$$eval(".e9_fb .e9_ff", (nodes) => {
+                return nodes.map((node, idx) => {
+                    const img = node.querySelector(".e9_fi img.e9_fj");
+                    if (!img) return null;
+
+                    const src = img.getAttribute("src") || "";
+                    if (!src) return null;
+
+                    return {
+                        index: idx,
+                        image: src,
+                        selected: node.classList.contains("e9_fk")
+                    };
+                }).filter(Boolean);
+            });
+
+            return items;
+        } catch {
+            return [];
+        }
+    }
+
+    async clickChoiceImage(index) {
+        if (!this.page) {
+            throw new Error("알리 결과 페이지가 열려 있지 않습니다.");
         }
 
-        await this.dumpDebug("ali_upload_failed_final");
-        throw new Error(`알리 이미지 업로드 실패: ${String(lastError?.message || lastError || "unknown")}`);
+        const selector = ".e9_fb .e9_ff .e9_fi";
+        await this.page.waitForSelector(selector, { timeout: 10000 });
+
+        const items = await this.page.$$(selector);
+        if (!items.length) {
+            throw new Error("알리 상품 선택 이미지 목록이 없습니다.");
+        }
+
+        if (index < 0 || index >= items.length) {
+            throw new Error("유효하지 않은 상품 선택 인덱스입니다.");
+        }
+
+        const beforeUrl = this.page.url();
+        await items[index].click({ force: true });
+        await this.waitForResultReady(beforeUrl);
+        await this.page.waitForTimeout(1200);
     }
 
     async scrollOneStep(stepCount = 2) {
@@ -752,63 +767,10 @@ class AliExpressClient {
         };
     }
 
-    async fetchResultHtml(resultUrl) {
-        const cookieHeader = await this.getCookieHeaderForAli();
-
-        const response = await axios.get(resultUrl, {
-            headers: {
-                ...this.defaultHeaders,
-                ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-                Referer: "https://ko.aliexpress.com/"
-            },
-            timeout: 22000,
-            responseType: "text"
-        });
-
-        return String(response.data || "");
-    }
-
-    async searchByLocalImageFile({ filePath, itemNo, maxItemsPerPage = 36 }) {
-        await this.init();
-
-        this.searchSeq += 1;
-        const searchToken = this.searchSeq;
-        this.currentResultPage = 1;
-        this.resetIncrementalState();
-
-        try {
-            await this.page.goto("https://ko.aliexpress.com/", {
-                waitUntil: "domcontentloaded",
-                timeout: 30000
-            });
-            await this.page.waitForTimeout(1200);
-        } catch {}
-
-        const preparedFilePath = await this.prepareLocalImageFile(filePath, itemNo);
-
-        this.log(`ℹ️ 알리 수동 이미지 검색 시작: no=${itemNo || "-"} / token=${searchToken}`);
-        const resultUrl = await this.uploadImage(preparedFilePath);
-
-        await this.page.waitForTimeout(1500);
-        const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
-        const sliced = firstPageItems.slice(0, maxItemsPerPage);
-
-        this.log(`✅ 알리 수동 후보 1차 수집 완료: page=1 / count=${sliced.length} / no=${itemNo || "-"}`);
-
-        return {
-            searched: true,
-            resultUrl,
-            pages: [sliced],
-            candidates: sliced
-        };
-    }
-
     async searchByImage({ imageUrl, itemNo, maxItemsPerPage = 36 }) {
         await this.init();
 
         this.searchSeq += 1;
-        const searchToken = this.searchSeq;
-
         this.currentResultPage = 1;
         this.resetIncrementalState();
 
@@ -823,21 +785,72 @@ class AliExpressClient {
         const tmpFile = path.join(this.tmpDir, `ali_${itemNo || Date.now()}.jpg`);
         await this.downloadImage(imageUrl, tmpFile);
 
-        this.log(`ℹ️ 알리 이미지 검색 시작: no=${itemNo || "-"} / token=${searchToken}`);
-
+        this.log(`ℹ️ 알리 이미지 검색 시작: no=${itemNo || "-"}`);
         const resultUrl = await this.uploadImage(tmpFile);
 
-        await this.page.waitForTimeout(1500);
+        await this.page.waitForTimeout(1200);
+        const choiceImages = await this.collectChoiceImages();
         const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
         const sliced = firstPageItems.slice(0, maxItemsPerPage);
-
-        this.log(`✅ 알리 후보 1차 수집 완료: page=1 / count=${sliced.length} / no=${itemNo || "-"}`);
 
         return {
             searched: true,
             resultUrl,
             pages: [sliced],
-            candidates: sliced
+            candidates: sliced,
+            choiceImages
+        };
+    }
+
+    async searchByLocalImageFile({ filePath, itemNo, maxItemsPerPage = 36 }) {
+        await this.init();
+
+        this.searchSeq += 1;
+        this.currentResultPage = 1;
+        this.resetIncrementalState();
+
+        try {
+            await this.page.goto("https://ko.aliexpress.com/", {
+                waitUntil: "domcontentloaded",
+                timeout: 30000
+            });
+            await this.page.waitForTimeout(1200);
+        } catch {}
+
+        const preparedFilePath = await this.prepareLocalImageFile(filePath, itemNo);
+
+        this.log(`ℹ️ 알리 수동 이미지 검색 시작: no=${itemNo || "-"}`);
+        const resultUrl = await this.uploadImage(preparedFilePath);
+
+        await this.page.waitForTimeout(1200);
+        const choiceImages = await this.collectChoiceImages();
+        const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
+        const sliced = firstPageItems.slice(0, maxItemsPerPage);
+
+        return {
+            searched: true,
+            resultUrl,
+            pages: [sliced],
+            candidates: sliced,
+            choiceImages
+        };
+    }
+
+    async selectChoiceImageAndCollect(index, maxItemsPerPage = 36) {
+        await this.clickChoiceImage(index);
+        this.currentResultPage = 1;
+        this.resetIncrementalState();
+
+        const choiceImages = await this.collectChoiceImages();
+        const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
+        const sliced = firstPageItems.slice(0, maxItemsPerPage);
+
+        return {
+            searched: true,
+            resultUrl: this.page ? this.page.url() : "",
+            pages: [sliced],
+            candidates: sliced,
+            choiceImages
         };
     }
 
@@ -895,13 +908,13 @@ class AliExpressClient {
         await this.page.waitForTimeout(1200);
         const firstPageItems = await this.collectVisibleCandidates(Math.max(80, maxItemsPerPage * 3));
         const sliced = firstPageItems.slice(0, maxItemsPerPage);
-
-        await this.dumpDebug(`ali_page_${this.currentResultPage}`);
+        const choiceImages = await this.collectChoiceImages();
 
         return {
             ok: true,
             page: this.currentResultPage,
-            items: sliced
+            items: sliced,
+            choiceImages
         };
     }
 }
